@@ -374,7 +374,7 @@ void Player::updatePhysics(float dt, World& world) {
 
         if (m_isGrounded) {
             if (pressSpace) {
-                m_vel.y = 6.2f; // Clean, standard ~1.2m jump height
+                m_vel.y = 7.1f; // Exact 1.5-block jump height
                 m_isGrounded = false;
                 AudioSystem::instance().playSound(SoundEffect::BlockPlace);
             }
