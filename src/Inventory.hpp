@@ -38,6 +38,9 @@ public:
     ItemStack& getSelectedItem() {
         return m_slots[m_selectedHotbar];
     }
+    const ItemStack& getSelectedItem() const {
+        return m_slots[m_selectedHotbar];
+    }
 
     bool addItem(ItemType type, int count = 1);
     bool removeItem(ItemType type, int count = 1);

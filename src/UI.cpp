@@ -5,6 +5,7 @@
 #include "Crafting.hpp"
 #include "TextureAtlas.hpp"
 #include "Biot.hpp"
+#include "Network.hpp"
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -449,6 +450,8 @@ void UI::render(const Shader& uiShader, int screenWidth, int screenHeight, const
         renderInventory(screenWidth, screenHeight, const_cast<Player&>(player));
     } else if (m_menuState == UIMenuState::CraftingScreen) {
         renderCrafting(screenWidth, screenHeight, const_cast<Player&>(player));
+    } else if (m_menuState == UIMenuState::MultiplayerScreen) {
+        renderMultiplayer(screenWidth, screenHeight);
     }
 
     if (m_mesh.empty()) return;
@@ -554,5 +557,114 @@ void UI::handleMouseClick(int mouseX, int mouseY, int button, Player& player) {
                 m_heldSlotIndex = -1;
             }
         }
+    } else if (m_menuState == UIMenuState::MultiplayerScreen) {
+        float winW = 680.0f, winH = 480.0f;
+        float wx = (1280.0f - winW) * 0.5f;
+        float wy = (720.0f - winH) * 0.5f;
+
+        // 1. Host Button Click
+        float hostBtnX = wx + 30.0f, hostBtnY = wy + 115.0f;
+        float hostBtnW = 280.0f, hostBtnH = 36.0f;
+        if (mouseX >= hostBtnX && mouseX <= hostBtnX + hostBtnW && mouseY >= hostBtnY && mouseY <= hostBtnY + hostBtnH) {
+            NetworkManager::instance().startHost(7777, "Rama Expedition");
+            return;
+        }
+
+        // 2. Disconnect Button Click
+        float discBtnX = wx + 340.0f, discBtnY = wy + 115.0f;
+        float discBtnW = 280.0f, discBtnH = 36.0f;
+        if (mouseX >= discBtnX && mouseX <= discBtnX + discBtnW && mouseY >= discBtnY && mouseY <= discBtnY + discBtnH) {
+            NetworkManager::instance().disconnect();
+            return;
+        }
+
+        // 3. Discovered Servers List Clicks
+        const auto& servers = NetworkManager::instance().getDiscoveredServers();
+        float listY = wy + 200.0f;
+        for (size_t i = 0; i < servers.size() && i < 5; ++i) {
+            float sy = listY + i * 40.0f;
+            float joinBtnX = wx + 540.0f, joinBtnY = sy + 4.0f;
+            float joinBtnW = 90.0f, joinBtnH = 28.0f;
+            if (mouseX >= joinBtnX && mouseX <= joinBtnX + joinBtnW && mouseY >= joinBtnY && mouseY <= joinBtnY + joinBtnH) {
+                NetworkManager::instance().connectTo(servers[i].ip, servers[i].port);
+                return;
+            }
+        }
+
+        // 4. Localhost Direct Connect Button
+        float locBtnX = wx + 30.0f, locBtnY = wy + 415.0f;
+        float locBtnW = 320.0f, locBtnH = 32.0f;
+        if (mouseX >= locBtnX && mouseX <= locBtnX + locBtnW && mouseY >= locBtnY && mouseY <= locBtnY + locBtnH) {
+            NetworkManager::instance().connectTo("127.0.0.1", 7777);
+            return;
+        }
     }
+}
+
+void UI::toggleMultiplayer() {
+    if (m_menuState == UIMenuState::MultiplayerScreen) {
+        m_menuState = UIMenuState::HUDOnly;
+    } else {
+        m_menuState = UIMenuState::MultiplayerScreen;
+    }
+}
+
+void UI::renderMultiplayer(int screenW, int screenH) {
+    float winW = 680.0f, winH = 480.0f;
+    float wx = (screenW - winW) * 0.5f;
+    float wy = (screenH - winH) * 0.5f;
+
+    // Outer Glow Border & Window Backing
+    drawQuad(wx - 4, wy - 4, winW + 8, winH + 8, Vec4(0.1f, 0.5f, 0.8f, 0.4f));
+    drawQuad(wx, wy, winW, winH, Vec4(0.04f, 0.06f, 0.10f, 0.96f));
+
+    // Title Bar
+    drawQuad(wx, wy, winW, 44.0f, Vec4(0.08f, 0.16f, 0.28f, 0.95f));
+    drawText("RAMA EXPEDITION - WIFI LAN MULTIPLAYER", wx + 20.0f, wy + 14.0f, 0.95f, Vec4(0.3f, 0.9f, 1.0f, 1.0f));
+
+    // 1. Connection Status Banner
+    std::string status = NetworkManager::instance().getStatusText();
+    Vec4 statusCol = NetworkManager::instance().isConnected() ? Vec4(0.3f, 1.0f, 0.5f, 1.0f) : Vec4(0.8f, 0.8f, 0.8f, 0.8f);
+    drawQuad(wx + 20.0f, wy + 56.0f, winW - 40.0f, 44.0f, Vec4(0.08f, 0.12f, 0.18f, 0.9f));
+    drawText("NETWORK STATUS: " + status, wx + 36.0f, wy + 70.0f, 0.85f, statusCol);
+
+    // Host & Disconnect Buttons
+    float hostBtnX = wx + 30.0f, hostBtnY = wy + 115.0f;
+    float hostBtnW = 280.0f, hostBtnH = 36.0f;
+    drawQuad(hostBtnX, hostBtnY, hostBtnW, hostBtnH, Vec4(0.15f, 0.55f, 0.35f, 0.95f));
+    drawText("HOST LAN EXPEDITION (PORT 7777)", hostBtnX + 24.0f, hostBtnY + 11.0f, 0.75f, Vec4(1, 1, 1, 1));
+
+    float discBtnX = wx + 340.0f, discBtnY = wy + 115.0f;
+    float discBtnW = 280.0f, discBtnH = 36.0f;
+    drawQuad(discBtnX, discBtnY, discBtnW, discBtnH, Vec4(0.55f, 0.2f, 0.2f, 0.95f));
+    drawText("DISCONNECT / SINGLEPLAYER", discBtnX + 38.0f, discBtnY + 11.0f, 0.75f, Vec4(1, 1, 1, 1));
+
+    // 2. Discovered LAN Servers List
+    drawText("DISCOVERED LAN SERVERS ON YOUR WIFI:", wx + 24.0f, wy + 175.0f, 0.8f, Vec4(0.9f, 0.85f, 0.4f, 1.0f));
+    float listY = wy + 200.0f;
+    const auto& servers = NetworkManager::instance().getDiscoveredServers();
+
+    if (servers.empty()) {
+        drawQuad(wx + 20.0f, listY, winW - 40.0f, 180.0f, Vec4(0.06f, 0.08f, 0.12f, 0.8f));
+        drawText("Searching WiFi subnet for active RamaCraft hosts...", wx + 130.0f, listY + 70.0f, 0.8f, Vec4(0.5f, 0.6f, 0.7f, 0.8f));
+        drawText("(Click 'HOST LAN EXPEDITION' above on one machine to start)", wx + 110.0f, listY + 95.0f, 0.7f, Vec4(0.4f, 0.5f, 0.6f, 0.7f));
+    } else {
+        for (size_t i = 0; i < servers.size() && i < 5; ++i) {
+            float sy = listY + i * 40.0f;
+            drawQuad(wx + 20.0f, sy, winW - 40.0f, 34.0f, Vec4(0.1f, 0.14f, 0.22f, 0.9f));
+            drawText(servers[i].name, wx + 36.0f, sy + 10.0f, 0.8f, Vec4(1, 1, 1, 1));
+            drawText(servers[i].ip + ":" + std::to_string(servers[i].port), wx + 280.0f, sy + 10.0f, 0.75f, Vec4(0.7f, 0.8f, 0.9f, 0.8f));
+            drawText(std::to_string(servers[i].currentPlayers) + "/" + std::to_string(servers[i].maxPlayers) + " Players", wx + 440.0f, sy + 10.0f, 0.75f, Vec4(0.4f, 1.0f, 0.6f, 0.9f));
+
+            // Join Button
+            drawQuad(wx + 540.0f, sy + 4.0f, 90.0f, 26.0f, Vec4(0.2f, 0.6f, 0.9f, 0.95f));
+            drawText("JOIN", wx + 568.0f, sy + 9.0f, 0.75f, Vec4(1, 1, 1, 1));
+        }
+    }
+
+    // 3. Direct Loopback Connect & Hotkey Info
+    drawQuad(wx + 30.0f, wy + 415.0f, 320.0f, 32.0f, Vec4(0.12f, 0.3f, 0.45f, 0.9f));
+    drawText("DIRECT CONNECT (127.0.0.1:7777)", wx + 48.0f, wy + 424.0f, 0.7f, Vec4(0.9f, 0.95f, 1.0f, 1.0f));
+
+    drawText("Press [M] to close menu and return to game", wx + 380.0f, wy + 424.0f, 0.7f, Vec4(0.6f, 0.7f, 0.8f, 0.8f));
 }

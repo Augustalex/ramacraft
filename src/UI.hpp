@@ -19,7 +19,8 @@ class World;
 enum class UIMenuState {
     HUDOnly,
     InventoryScreen,
-    CraftingScreen
+    CraftingScreen,
+    MultiplayerScreen
 };
 
 class UI {
@@ -35,6 +36,7 @@ public:
     void handleMouseClick(int mouseX, int mouseY, int button, Player& player);
     void toggleInventory();
     void toggleCrafting();
+    void toggleMultiplayer();
     void closeMenus();
 
     UIMenuState getMenuState() const { return m_menuState; }
@@ -47,6 +49,7 @@ private:
     int m_selectedRecipe = 0;
     int m_heldSlotIndex = -1;
     float m_radarAngle = 0.0f;
+    std::string m_directConnectIp = "127.0.0.1";
 
     GLuint m_vao = 0;
     GLuint m_vbo = 0;
@@ -66,4 +69,5 @@ private:
     void renderHUD(int screenW, int screenH, const Player& player, const World& world);
     void renderInventory(int screenW, int screenH, Player& player);
     void renderCrafting(int screenW, int screenH, Player& player);
+    void renderMultiplayer(int screenW, int screenH);
 };

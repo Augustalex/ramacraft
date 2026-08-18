@@ -1,5 +1,6 @@
 #include "Game.hpp"
 #include "ItemEntity.hpp"
+#include "Network.hpp"
 #include <iostream>
 
 #ifdef __EMSCRIPTEN__
@@ -38,24 +39,24 @@ bool Game::init(int width, int height) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     m_window = SDL_CreateWindow(
-        "RamaCraft - Rendezvous with Rama Voxel Exploration",
+        "RamaCraft - Voxel Survival inside Arthur C. Clarke's Rama",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         m_width, m_height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
     );
 
     if (!m_window) {
-        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        std::cerr << "Failed to create SDL Window: " << SDL_GetError() << std::endl;
         return false;
     }
 
     m_glContext = SDL_GL_CreateContext(m_window);
     if (!m_glContext) {
-        std::cerr << "SDL_GL_CreateContext Error: " << SDL_GetError() << std::endl;
+        std::cerr << "Failed to create OpenGL Context: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    SDL_GL_SetSwapInterval(1); // VSync
+    SDL_GL_SetSwapInterval(1); // Enable VSync
 
     int drawW, drawH;
     SDL_GL_GetDrawableSize(m_window, &drawW, &drawH);
@@ -66,14 +67,14 @@ bool Game::init(int width, int height) {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    // Initialize subsystems
+    // Initialize Global Subsystems
     BlockRegistry::init();
-    TextureAtlas::instance().init();
     AudioSystem::instance().init();
-    CraftingSystem::instance().initRecipes();
+    TextureAtlas::instance().init();
     ProjectileManager::instance().init();
     BiotManager::instance().init();
     ItemEntityManager::instance().init();
+    NetworkManager::instance().init();
     UI::instance().init();
 
     // Compile Shaders
@@ -102,6 +103,7 @@ bool Game::init(int width, int height) {
 }
 
 void Game::cleanup() {
+    NetworkManager::instance().cleanup();
     UI::instance().cleanup();
     ItemEntityManager::instance().cleanup();
     BiotManager::instance().cleanup();
@@ -150,6 +152,9 @@ void Game::handleEvent(const SDL_Event& event) {
             setRelativeMouse(!UI::instance().isMenuOpen());
         } else if (key == SDLK_c) {
             UI::instance().toggleCrafting();
+            setRelativeMouse(!UI::instance().isMenuOpen());
+        } else if (key == SDLK_m) {
+            UI::instance().toggleMultiplayer();
             setRelativeMouse(!UI::instance().isMenuOpen());
         } else if (key == SDLK_f) {
             m_player.toggleFlashlight();
@@ -202,6 +207,7 @@ void Game::update(float dt) {
     ItemEntityManager::instance().update(dt, m_world, m_player);
     BiotManager::instance().update(dt, m_world, m_player);
     ProjectileManager::instance().update(dt, m_world, BiotManager::instance());
+    NetworkManager::instance().update(dt, m_world, m_player);
     UI::instance().update(dt);
 }
 
@@ -215,8 +221,8 @@ void Game::render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float aspect = (float)drawW / (float)drawH;
-    // Colossal 1500m far plane for 2x scale cylinder
-    Mat4 proj = Mat4::perspective(75.0f * DEG2RAD, aspect, 0.1f, 1500.0f);
+    // Colossal 2000m far plane for cylinder
+    Mat4 proj = Mat4::perspective(75.0f * DEG2RAD, aspect, 0.1f, 2000.0f);
     Mat4 view = m_player.getViewMatrix();
     Vec3 playerEye3D = m_player.getEyePosition3D();
     Vec3 playerPos3D = m_player.getWorldPos3D();
@@ -246,28 +252,31 @@ void Game::render() {
     // 2. Render Opaque Voxel World Chunks (Full 360-degree Cylinder Ring)
     m_world.render(m_voxelShader, playerPos3D, view, proj);
 
-    // 3. Feature 5: Render Rama Central Spindle & 6 Linear Sun Rods
+    // 3. Render Rama Central Spindle & 6 Linear Sun Rods
     m_world.renderRamaSpindleAndSuns(m_entityShader, playerPos3D, view, proj);
 
-    // 4. Feature 6: Render Floating 3D Pickups
+    // 4. Render Floating 3D Pickups
     ItemEntityManager::instance().render(m_entityShader, playerPos3D, view, proj);
 
     // 5. Render Biots (Robot Beetles)
     BiotManager::instance().render(m_entityShader, playerPos3D, view, proj);
 
-    // 6. Render Projectiles & Sparks
+    // 6. Render Remote Multiplayer Players (Astronauts)
+    NetworkManager::instance().renderRemotePlayers(m_entityShader, playerPos3D, view, proj);
+
+    // 7. Render Projectiles & Sparks
     ProjectileManager::instance().render(m_entityShader, playerPos3D, view, proj);
 
-    // 7. Render Transparent Chunks (Cylindrical Sea water, glass)
+    // 8. Render Transparent Chunks (Cylindrical Sea water, glass)
     m_world.renderTransparent(m_voxelShader, playerPos3D, view, proj);
 
-    // 8. Feature 1: Render First-Person 3D Viewmodel & Weapon Sway
+    // 9. Render First-Person 3D Viewmodel & Weapon Sway
     if (!UI::instance().isMenuOpen()) {
         Mat4 vmProj = Mat4::perspective(65.0f * DEG2RAD, aspect, 0.05f, 10.0f);
         m_player.renderViewmodel(m_entityShader, vmProj);
     }
 
-    // 9. Render 2D UI / HUD (including Feature 7 Holographic Radar Scanner)
+    // 10. Render 2D UI / HUD
     UI::instance().render(m_uiShader, m_width, m_height, m_player, m_world);
 
     SDL_GL_SwapWindow(m_window);

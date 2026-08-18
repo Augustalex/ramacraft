@@ -1,9 +1,11 @@
 #include "Player.hpp"
 #include "World.hpp"
-#include "Projectile.hpp"
-#include "Audio.hpp"
-#include "TextureAtlas.hpp"
+#include "Block.hpp"
 #include "Shader.hpp"
+#include "TextureAtlas.hpp"
+#include "Audio.hpp"
+#include "Projectile.hpp"
+#include "Network.hpp"
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -103,11 +105,17 @@ void Player::fireRayGun(World& world) {
         m_recoilAnim = 1.0f; // Trigger viewmodel kickback animation
 
         if (hasOverclock) {
-            ProjectileManager::instance().spawnBolt(eye + right * 0.15f - Vec3(0, 0.1f, 0), fwd, 55.0f, 40.0f, true);
-            ProjectileManager::instance().spawnBolt(eye - right * 0.15f - Vec3(0, 0.1f, 0), fwd, 55.0f, 40.0f, true);
+            Vec3 bPos1 = eye + right * 0.15f - Vec3(0, 0.1f, 0);
+            Vec3 bPos2 = eye - right * 0.15f - Vec3(0, 0.1f, 0);
+            ProjectileManager::instance().spawnBolt(bPos1, fwd, 55.0f, 40.0f, true);
+            ProjectileManager::instance().spawnBolt(bPos2, fwd, 55.0f, 40.0f, true);
+            NetworkManager::instance().sendShoot(bPos1, fwd, 55.0f, 40.0f, true);
+            NetworkManager::instance().sendShoot(bPos2, fwd, 55.0f, 40.0f, true);
             m_fireCooldown = 0.14f;
         } else {
-            ProjectileManager::instance().spawnBolt(eye + right * 0.12f - Vec3(0, 0.1f, 0), fwd, 48.0f, 25.0f, false);
+            Vec3 bPos = eye + right * 0.12f - Vec3(0, 0.1f, 0);
+            ProjectileManager::instance().spawnBolt(bPos, fwd, 48.0f, 25.0f, false);
+            NetworkManager::instance().sendShoot(bPos, fwd, 48.0f, 25.0f, false);
             m_fireCooldown = 0.20f;
         }
     }
@@ -132,6 +140,7 @@ void Player::placeSelectedBlock(World& world) {
     if (info.isPlaceable && sel.count > 0) {
         Vec3i placePos = m_targetBlock + m_targetNormal;
         world.setBlock(placePos.x, placePos.y, placePos.z, info.placeBlock);
+        NetworkManager::instance().sendBlockChange(placePos.x, placePos.y, placePos.z, info.placeBlock);
 
         if (info.placeBlock == BlockType::Torch) {
             world.addTorch(placePos);
@@ -183,6 +192,7 @@ void Player::update(float dt, World& world) {
 
             if (m_miningProgress >= 1.0f) {
                 world.setBlock(m_targetBlock.x, m_targetBlock.y, m_targetBlock.z, BlockType::Air);
+                NetworkManager::instance().sendBlockChange(m_targetBlock.x, m_targetBlock.y, m_targetBlock.z, BlockType::Air);
                 if (bt == BlockType::Torch) {
                     world.removeTorch(m_targetBlock);
                 }
