@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RamaCraft - Rendezvous with Rama Voxel Exploration</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #05070a;
+            color: #d0e4ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        header {
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            letter-spacing: 3px;
+            color: #4dc2ff;
+            text-shadow: 0 0 10px rgba(77, 194, 255, 0.5);
+            text-transform: uppercase;
+        }
+        p.subtitle {
+            font-size: 13px;
+            color: #799bbb;
+            margin-top: 4px;
+        }
+        #canvas-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.2);
+            border: 2px solid #1a324d;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            outline: none;
+            width: 1024px;
+            height: 576px;
+        }
+        #controls-guide {
+            margin-top: 14px;
+            font-size: 12px;
+            color: #8da4be;
+            background: rgba(13, 24, 39, 0.7);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid #203f63;
+        }
+        #controls-guide kbd {
+            background: #1e3a5f;
+            color: #55d0ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #336199;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>RAMACRAFT</h1>
+        <p class="subtitle">Minecraft meets Rendezvous with Rama &bull; Exploration, Ancient Monoliths & Nocturnal Biots</p>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+    </div>
+
+    <div id="controls-guide">
+        <kbd>WASD</kbd> Move &bull;
+        <kbd>SPACE</kbd> Thruster Jetpack &bull;
+        <kbd>LEFT CLICK</kbd> Ray Gun / Mining Beam &bull;
+        <kbd>RIGHT CLICK</kbd> Place Block / Torch &bull;
+        <kbd>F</kbd> Flashlight &bull;
+        <kbd>E</kbd> Inventory &bull;
+        <kbd>C</kbd> Tech Fabricator &bull;
+        <kbd>K</kbd> Toggle Curvature
+    </div>
+
+    <script type='text/javascript'>
+        var Module = {
+            canvas: (function() {
+                var canvas = document.getElementById('canvas');
+                return canvas;
+            })()
+        };
+    </script>
+    <script src="dist/ramacraft.js"></script>
+</body>
+</html>
