@@ -147,9 +147,11 @@ void Game::handleEvent(const SDL_Event& event) {
             } else {
                 setRelativeMouse(!m_relativeMouse);
             }
-        } else if (key == SDLK_e || key == SDLK_TAB) {
+        } else if (key == SDLK_e) {
             UI::instance().toggleInventory();
             setRelativeMouse(!UI::instance().isMenuOpen());
+        } else if (key == SDLK_TAB) {
+            m_player.toggleJetpackMode();
         } else if (key == SDLK_c) {
             UI::instance().toggleCrafting();
             setRelativeMouse(!UI::instance().isMenuOpen());

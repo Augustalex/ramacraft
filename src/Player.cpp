@@ -99,6 +99,17 @@ void Player::toggleFlashlight() {
     AudioSystem::instance().playSound(SoundEffect::BlockPlace);
 }
 
+void Player::toggleJetpackMode() {
+    m_jetpackMode = !m_jetpackMode;
+    AudioSystem::instance().playSound(SoundEffect::BlockPlace);
+    if (m_jetpackMode) {
+        m_isGrounded = false;
+    } else {
+        AudioSystem::instance().setJetpackHum(false);
+        m_jetpackActive = false;
+    }
+}
+
 void Player::takeDamage(float amount) {
     m_health = std::max(0.0f, m_health - amount);
 }
@@ -298,46 +309,64 @@ void Player::updatePhysics(float dt, World& world) {
         m_bobTime += dt * 2.0f;
     }
 
-    float walkSpeed = (m_isGrounded && pressShift) ? 9.0f : 5.0f;
-
-    // Check Jetpack Activation: Space (Look-Fwd), Shift in-air (Look-Up), Ctrl (Look-Down)
-    bool jetpackRequested = pressSpace || (pressShift && !m_isGrounded) || pressCtrl;
-
-    if (jetpackRequested) {
-        m_jetpackActive = true;
+    if (m_jetpackMode) {
+        // ==========================================
+        // JETPACK FLIGHT MODE (TOGGLED WITH TAB)
+        // ==========================================
+        // Normal walking is disabled; full 3D thruster controls active!
         m_isGrounded = false;
         m_jetpackFuel = 100.0f;
 
         float thrustPower = 28.0f;
         Vec3 jetpackThrust(0, 0, 0);
+        bool isThrusting = false;
 
         // 1. Space thrusts towards where looking
         if (pressSpace) {
             jetpackThrust += lookFwd * thrustPower;
+            isThrusting = true;
         }
 
         // 2. Shift thrusts upwards relative to view
         if (pressShift) {
             jetpackThrust += lookUp * thrustPower;
+            isThrusting = true;
         }
 
         // 3. Ctrl thrusts downwards relative to view
         if (pressCtrl) {
             jetpackThrust -= lookUp * thrustPower;
+            isThrusting = true;
         }
 
-        // WASD directional steering in flight
+        // 4. WASD directional steering in flight
         if (inputDir.lengthSq() > 0.001f) {
-            jetpackThrust += inputDir * (thrustPower * 0.4f);
+            jetpackThrust += inputDir * (thrustPower * 0.5f);
+            isThrusting = true;
         }
 
-        m_vel += jetpackThrust * dt;
+        m_jetpackActive = isThrusting;
+        AudioSystem::instance().setJetpackHum(isThrusting);
 
-        AudioSystem::instance().setJetpackHum(true);
-        ProjectileManager::instance().spawnJetpackExhaust(getWorldPos3D() - Vec3(0, 0.4f, 0), Vec3(0, -1, 0));
+        if (isThrusting) {
+            m_vel += jetpackThrust * dt;
+            ProjectileManager::instance().spawnJetpackExhaust(getWorldPos3D() - Vec3(0, 0.4f, 0), Vec3(0, -1, 0));
+        }
+
+        // Inertial damping in jetpack mode
+        m_vel.x *= 0.985f;
+        m_vel.y *= 0.985f;
+        m_vel.z *= 0.985f;
+
     } else {
+        // ==========================================
+        // NORMAL WALKING & SURVIVAL MODE
+        // ==========================================
+        // Jetpack is completely OFF! No forward thruster, no hum, no auto-firing when falling.
         m_jetpackActive = false;
         AudioSystem::instance().setJetpackHum(false);
+
+        float walkSpeed = (m_isGrounded && pressShift) ? 9.0f : 5.0f;
 
         if (m_isGrounded) {
             // Ground walking physics
@@ -350,7 +379,7 @@ void Player::updatePhysics(float dt, World& world) {
                 AudioSystem::instance().playSound(SoundEffect::BlockPlace);
             }
         } else {
-            // Natural Minecraft-style Gravity & Drag
+            // Natural Minecraft-style Gravity & Drag (Zero Jetpack firing)
             float groundGravZone = 60.0f;
             float ceilingGravZone = (World::CYLINDER_RADIUS * 2.0f - 60.0f);
 
@@ -365,10 +394,10 @@ void Player::updatePhysics(float dt, World& world) {
                 m_vel.y *= 0.99f;
             }
 
-            // Air steering & friction
+            // In-air gentle steering
             if (inputDir.lengthSq() > 0.001f) {
-                m_vel.x += inputDir.x * (walkSpeed * 0.4f);
-                m_vel.z += inputDir.z * (walkSpeed * 0.4f);
+                m_vel.x += inputDir.x * (walkSpeed * 0.35f);
+                m_vel.z += inputDir.z * (walkSpeed * 0.35f);
             }
             m_vel.x *= 0.95f;
             m_vel.z *= 0.95f;

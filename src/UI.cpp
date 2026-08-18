@@ -131,12 +131,14 @@ void UI::renderHUD(int screenW, int screenH, const Player& player, const World& 
     drawQuad(barX, barY, barW * hpPct, barH, Vec4(0.9f, 0.2f, 0.2f, 1.0f));
     drawText("SUIT INTEGRITY: " + std::to_string((int)player.getHealth()) + "%", barX + 6, barY + 1, 0.8f, Vec4(1, 1, 1, 1));
 
-    // Jetpack Thruster Fuel Bar
+    // Jetpack Status / Mode Indicator (TAB to toggle)
     barY += 22.0f;
     drawQuad(barX - 2, barY - 2, barW + 4, barH + 4, Vec4(0.1f, 0.1f, 0.15f, 0.8f));
-    float fuelPct = std::clamp(player.getJetpackFuel() / 100.0f, 0.0f, 1.0f);
-    drawQuad(barX, barY, barW * fuelPct, barH, Vec4(0.2f, 0.7f, 1.0f, 1.0f));
-    drawText("JETPACK FUEL: " + std::to_string((int)player.getJetpackFuel()) + "%", barX + 6, barY + 1, 0.8f, Vec4(1, 1, 1, 1));
+    bool jpMode = player.isJetpackMode();
+    Vec4 jpBarCol = jpMode ? Vec4(0.15f, 0.75f, 0.35f, 1.0f) : Vec4(0.25f, 0.3f, 0.35f, 0.8f);
+    drawQuad(barX, barY, barW, barH, jpBarCol);
+    std::string jpText = jpMode ? "JETPACK: FLIGHT ON [TAB]" : "JETPACK: OFF [TAB]";
+    drawText(jpText, barX + 6, barY + 1, 0.8f, Vec4(1, 1, 1, 1));
 
     // Oxygen Supply Bar (shown if swimming or low)
     if (player.isInWater() || player.getOxygen() < 98.0f) {

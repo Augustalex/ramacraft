@@ -46,6 +46,8 @@ public:
     bool isGrounded() const { return m_isGrounded; }
     bool isInWater() const { return m_inWater; }
     bool isUnderwater() const { return m_underwater; }
+    bool isJetpackMode() const { return m_jetpackMode; }
+    void toggleJetpackMode();
     bool isJetpackActive() const { return m_jetpackActive; }
     float getJetpackFuel() const { return m_jetpackFuel; }
     float getMaxFuel() const { return m_maxFuel; }
@@ -93,6 +95,7 @@ private:
     bool m_isGrounded = false;
     bool m_inWater = false;
     bool m_underwater = false;
+    bool m_jetpackMode = false;
     bool m_jetpackActive = false;
     float m_jetpackFuel = 100.0f;
     float m_maxFuel = 100.0f;
