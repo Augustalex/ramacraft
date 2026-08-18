@@ -2,6 +2,32 @@
 
 A 3D voxel survival, exploration, and base-building game set inside the colossal cylindrical alien starship **Rama**.
 
+[![Release](https://img.shields.io/github/v/release/Augustalex/ramacraft?color=blue&label=Latest%20Release)](https://github.com/Augustalex/ramacraft/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-brightgreen)](#-quick-install--play)
+
+---
+
+## ⚡ Quick Install & Play
+
+### 🐧 Linux (Kubuntu, Ubuntu, Debian):
+Paste either command in your terminal to automatically download, install dependencies, and launch:
+
+**Using `wget`:**
+```bash
+wget -qO- https://raw.githubusercontent.com/Augustalex/ramacraft/main/install.sh | bash
+```
+
+**Using `curl`:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Augustalex/ramacraft/main/install.sh | bash
+```
+
+### 🪟 Windows & 🍎 macOS:
+Download directly from the [**Releases Page**](https://github.com/Augustalex/ramacraft/releases/latest):
+- **Windows**: Download [`ramacraft-windows-x64.zip`](https://github.com/Augustalex/ramacraft/releases/latest/download/ramacraft-windows-x64.zip), extract, and double-click `ramacraft.exe`.
+- **macOS**: Download [`ramacraft-macos.tar.gz`](https://github.com/Augustalex/ramacraft/releases/latest/download/ramacraft-macos.tar.gz), extract, and run `./ramacraft`.
+- **Linux (`.deb`)**: Download [`ramacraft-ubuntu-debian-amd64.deb`](https://github.com/Augustalex/ramacraft/releases/latest/download/ramacraft-ubuntu-debian-amd64.deb) and double-click to install.
+
 ---
 
 ## Features
