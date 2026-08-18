@@ -14,7 +14,9 @@ enum class SoundEffect {
     PlayerHurt,
     AlarmSiren,
     CraftItem,
-    JetpackBurst
+    JetpackBurst,
+    Explosion,
+    GrenadeBounce
 };
 
 class AudioSystem {

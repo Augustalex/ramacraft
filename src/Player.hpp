@@ -52,13 +52,17 @@ public:
     float getHealth() const { return m_health; }
     float getMaxHealth() const { return m_maxHealth; }
     float getOxygen() const { return m_oxygen; }
+    float getDamageFlash() const { return m_damageFlash; }
     bool isFlashlightOn() const { return m_flashlightOn; }
     void toggleFlashlight();
     void takeDamage(float amount);
     void heal(float amount);
+    void addVelocity(const Vec3& v) { m_vel += v; }
+    void respawn(const Vec3& spawnPos = {0, 20.0f, 0});
 
     // Combat & Mining
     void fireRayGun(World& world);
+    void throwGrenade(World& world);
     void startMining();
     void stopMining();
     bool isMining() const { return m_isMining; }
@@ -99,6 +103,7 @@ private:
     float m_health = 100.0f;
     float m_maxHealth = 100.0f;
     float m_oxygen = 100.0f;
+    float m_damageFlash = 0.0f;
 
     bool m_flashlightOn = true;
 

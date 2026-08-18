@@ -23,6 +23,20 @@ void CraftingSystem::initRecipes() {
         m_recipes.push_back(r);
     }
 
+    // Plasma Frag Grenades
+    {
+        CraftingRecipe r;
+        r.name = "Plasma Frag Grenades (x4)";
+        r.description = "Explosive ordnance: 2.5s timed detonation crater charge";
+        r.outputItem = ItemType::Grenade;
+        r.outputCount = 4;
+        r.ingredients = {
+            {ItemType::CarboniteChunk, 2},
+            {ItemType::SilicaDust, 1}
+        };
+        m_recipes.push_back(r);
+    }
+
     // 2. Plasteel Sheet (Material Refining)
     {
         CraftingRecipe r;

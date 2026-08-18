@@ -42,6 +42,7 @@ enum class ItemType : uint16_t {
     Flashlight = 2,
     Jetpack = 3,
     MiningDrill = 4,
+    Grenade = 5,
 
     // Raw Materials & Minerals
     TitaniumOreItem = 10,

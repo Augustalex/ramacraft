@@ -5,6 +5,7 @@
 #include "TextureAtlas.hpp"
 #include "Projectile.hpp"
 #include "Audio.hpp"
+#include "Biot.hpp"
 
 #include <iostream>
 #include <cstring>
@@ -332,6 +333,86 @@ void NetworkManager::sendShoot(const Vec3& origin, const Vec3& dir, float speed,
     }
 }
 
+void NetworkManager::sendGrenadeThrow(const Vec3& origin, const Vec3& vel) {
+    if (m_gameSocket < 0 || m_role == NetworkRole::Offline) return;
+
+    PacketGrenadeThrow pkt;
+    pkt.header.type = PacketType::GrenadeThrow;
+    pkt.header.playerId = m_localPlayerId;
+    pkt.origin = origin;
+    pkt.vel = vel;
+
+    if (m_role == NetworkRole::Client) {
+        sockaddr_in hostAddr{};
+        hostAddr.sin_family = AF_INET;
+        hostAddr.sin_port = htons(m_gamePort);
+        inet_pton(AF_INET, m_hostIp.c_str(), &hostAddr.sin_addr);
+        sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&hostAddr, sizeof(hostAddr));
+    } else if (m_role == NetworkRole::Host) {
+        for (const auto& pair : m_clientEndpoints) {
+            sockaddr_in clientAddr{};
+            clientAddr.sin_family = AF_INET;
+            clientAddr.sin_addr.s_addr = pair.second.ip;
+            clientAddr.sin_port = pair.second.port;
+            sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+        }
+    }
+}
+
+void NetworkManager::sendDamagePvP(uint8_t targetPlayerId, float damage, const Vec3& knockback) {
+    if (m_gameSocket < 0 || m_role == NetworkRole::Offline) return;
+
+    PacketDamagePvP pkt;
+    pkt.header.type = PacketType::DamagePvP;
+    pkt.header.playerId = m_localPlayerId;
+    pkt.targetPlayerId = targetPlayerId;
+    pkt.damage = damage;
+    pkt.knockback = knockback;
+
+    if (m_role == NetworkRole::Client) {
+        sockaddr_in hostAddr{};
+        hostAddr.sin_family = AF_INET;
+        hostAddr.sin_port = htons(m_gamePort);
+        inet_pton(AF_INET, m_hostIp.c_str(), &hostAddr.sin_addr);
+        sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&hostAddr, sizeof(hostAddr));
+    } else if (m_role == NetworkRole::Host) {
+        for (const auto& pair : m_clientEndpoints) {
+            sockaddr_in clientAddr{};
+            clientAddr.sin_family = AF_INET;
+            clientAddr.sin_addr.s_addr = pair.second.ip;
+            clientAddr.sin_port = pair.second.port;
+            sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+        }
+    }
+}
+
+void NetworkManager::sendExplosion(const Vec3& pos, float radius, float maxDamage) {
+    if (m_gameSocket < 0 || m_role == NetworkRole::Offline) return;
+
+    PacketExplosion pkt;
+    pkt.header.type = PacketType::Explosion;
+    pkt.header.playerId = m_localPlayerId;
+    pkt.pos = pos;
+    pkt.radius = radius;
+    pkt.maxDamage = maxDamage;
+
+    if (m_role == NetworkRole::Client) {
+        sockaddr_in hostAddr{};
+        hostAddr.sin_family = AF_INET;
+        hostAddr.sin_port = htons(m_gamePort);
+        inet_pton(AF_INET, m_hostIp.c_str(), &hostAddr.sin_addr);
+        sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&hostAddr, sizeof(hostAddr));
+    } else if (m_role == NetworkRole::Host) {
+        for (const auto& pair : m_clientEndpoints) {
+            sockaddr_in clientAddr{};
+            clientAddr.sin_family = AF_INET;
+            clientAddr.sin_addr.s_addr = pair.second.ip;
+            clientAddr.sin_port = pair.second.port;
+            sendto(m_gameSocket, &pkt, sizeof(pkt), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+        }
+    }
+}
+
 void NetworkManager::processIncomingPackets(World& world, Player& localPlayer) {
     uint8_t buffer[2048];
     sockaddr_in fromAddr{};
@@ -506,6 +587,60 @@ void NetworkManager::processIncomingPackets(World& world, Player& localPlayer) {
                             clientAddr.sin_addr.s_addr = pair.second.ip;
                             clientAddr.sin_port = pair.second.port;
                             sendto(m_gameSocket, shoot, sizeof(*shoot), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+                        }
+                    }
+                }
+            }
+            // Handle Grenade Throw
+            else if (hdr->type == PacketType::GrenadeThrow) {
+                const PacketGrenadeThrow* gt = reinterpret_cast<const PacketGrenadeThrow*>(buffer);
+                ProjectileManager::instance().spawnGrenade(gt->origin, gt->vel, gt->header.playerId);
+
+                if (m_role == NetworkRole::Host) {
+                    for (const auto& pair : m_clientEndpoints) {
+                        if (pair.first != hdr->playerId) {
+                            sockaddr_in clientAddr{};
+                            clientAddr.sin_family = AF_INET;
+                            clientAddr.sin_addr.s_addr = pair.second.ip;
+                            clientAddr.sin_port = pair.second.port;
+                            sendto(m_gameSocket, gt, sizeof(*gt), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+                        }
+                    }
+                }
+            }
+            // Handle Damage PvP
+            else if (hdr->type == PacketType::DamagePvP) {
+                const PacketDamagePvP* dmg = reinterpret_cast<const PacketDamagePvP*>(buffer);
+                if (dmg->targetPlayerId == m_localPlayerId) {
+                    localPlayer.takeDamage(dmg->damage);
+                    localPlayer.addVelocity(dmg->knockback);
+                }
+
+                if (m_role == NetworkRole::Host) {
+                    for (const auto& pair : m_clientEndpoints) {
+                        if (pair.first != hdr->playerId) {
+                            sockaddr_in clientAddr{};
+                            clientAddr.sin_family = AF_INET;
+                            clientAddr.sin_addr.s_addr = pair.second.ip;
+                            clientAddr.sin_port = pair.second.port;
+                            sendto(m_gameSocket, dmg, sizeof(*dmg), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
+                        }
+                    }
+                }
+            }
+            // Handle Remote Explosion
+            else if (hdr->type == PacketType::Explosion) {
+                const PacketExplosion* exp = reinterpret_cast<const PacketExplosion*>(buffer);
+                ProjectileManager::instance().triggerExplosion(exp->pos, exp->radius, exp->maxDamage, world, BiotManager::instance(), &localPlayer, false);
+
+                if (m_role == NetworkRole::Host) {
+                    for (const auto& pair : m_clientEndpoints) {
+                        if (pair.first != hdr->playerId) {
+                            sockaddr_in clientAddr{};
+                            clientAddr.sin_family = AF_INET;
+                            clientAddr.sin_addr.s_addr = pair.second.ip;
+                            clientAddr.sin_port = pair.second.port;
+                            sendto(m_gameSocket, exp, sizeof(*exp), 0, (sockaddr*)&clientAddr, sizeof(clientAddr));
                         }
                     }
                 }

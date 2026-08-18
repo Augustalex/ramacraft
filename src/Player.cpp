@@ -111,7 +111,23 @@ void Player::toggleJetpackMode() {
 }
 
 void Player::takeDamage(float amount) {
+    if (amount <= 0.0f) return;
     m_health = std::max(0.0f, m_health - amount);
+    m_damageFlash = 1.0f;
+    AudioSystem::instance().playSound(SoundEffect::PlayerHurt);
+
+    if (m_health <= 0.0f) {
+        respawn({m_pos.x, 20.0f, m_pos.z});
+    }
+}
+
+void Player::respawn(const Vec3& spawnPos) {
+    m_health = m_maxHealth;
+    m_pos = spawnPos;
+    m_vel = {0, 0, 0};
+    m_damageFlash = 1.0f;
+    ProjectileManager::instance().spawnSparks(getWorldPos3D(), Vec4(0.2f, 0.8f, 1.0f, 1.0f), 40, 8.0f);
+    AudioSystem::instance().playSound(SoundEffect::CraftItem);
 }
 
 void Player::heal(float amount) {
@@ -128,23 +144,51 @@ void Player::fireRayGun(World& world) {
         Vec3 eye = getEyePosition();
         Vec3 fwd = getForward();
         Vec3 right = getRight();
+        uint8_t localId = NetworkManager::instance().getLocalPlayerId();
 
         m_recoilAnim = 1.0f; // Trigger viewmodel kickback animation
 
         if (hasOverclock) {
             Vec3 bPos1 = eye + right * 0.15f - Vec3(0, 0.1f, 0);
             Vec3 bPos2 = eye - right * 0.15f - Vec3(0, 0.1f, 0);
-            ProjectileManager::instance().spawnBolt(bPos1, fwd, 55.0f, 40.0f, true);
-            ProjectileManager::instance().spawnBolt(bPos2, fwd, 55.0f, 40.0f, true);
+            ProjectileManager::instance().spawnBolt(bPos1, fwd, 55.0f, 40.0f, true, localId);
+            ProjectileManager::instance().spawnBolt(bPos2, fwd, 55.0f, 40.0f, true, localId);
             NetworkManager::instance().sendShoot(bPos1, fwd, 55.0f, 40.0f, true);
             NetworkManager::instance().sendShoot(bPos2, fwd, 55.0f, 40.0f, true);
             m_fireCooldown = 0.14f;
         } else {
             Vec3 bPos = eye + right * 0.12f - Vec3(0, 0.1f, 0);
-            ProjectileManager::instance().spawnBolt(bPos, fwd, 48.0f, 25.0f, false);
+            ProjectileManager::instance().spawnBolt(bPos, fwd, 48.0f, 25.0f, false, localId);
             NetworkManager::instance().sendShoot(bPos, fwd, 48.0f, 25.0f, false);
             m_fireCooldown = 0.20f;
         }
+    }
+}
+
+void Player::throwGrenade(World& world) {
+    if (m_fireCooldown > 0.0f) return;
+
+    ItemStack& sel = m_inventory.getSelectedItem();
+    if (sel.type == ItemType::Grenade && sel.count > 0) {
+        sel.count--;
+        if (sel.count == 0) {
+            sel.clear();
+        }
+
+        Vec3 eye = getEyePosition();
+        Vec3 fwd = getForward();
+        Vec3 up = Vec3(0, 1, 0);
+
+        Vec3 throwVel = fwd * 22.0f + up * 3.5f + m_vel * 0.5f;
+
+        m_recoilAnim = 1.0f;
+        m_fireCooldown = 0.35f;
+
+        uint8_t localId = NetworkManager::instance().getLocalPlayerId();
+        ProjectileManager::instance().spawnGrenade(eye, throwVel, localId);
+        NetworkManager::instance().sendGrenadeThrow(eye, throwVel);
+
+        AudioSystem::instance().playSound(SoundEffect::LaserFire);
     }
 }
 
@@ -266,6 +310,8 @@ void Player::update(float dt, World& world) {
     } else {
         m_oxygen = std::min(100.0f, m_oxygen + 20.0f * dt); // Fast oxygen replenishment
     }
+
+    m_damageFlash = std::max(0.0f, m_damageFlash - dt * 2.5f);
 
     updatePhysics(dt, world);
 }

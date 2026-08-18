@@ -26,10 +26,11 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
   - Automatic LAN beacon discovery finds active games on your network with 1-click connect.
   - Full real-time synchronization of 3D astronaut movements, jetpack flights, mining, building, and laser gun combat.
 - **Starting Equipment**:
-  - **Ray Gun**: Left click to fire plasma bolts or hold to mine blocks.
+  - **Ray Gun**: Combat energy pistol for hunting biots and multiplayer PvP shootouts.
+  - **Plasma Frag Grenades**: Bouncy high-explosive ordnance with a 2.4s timed fuse; creates craters, deals blast damage, and launches players!
   - **Flashlight**: Press `[F]` to toggle directional spotlight.
-  - **Jetpack**: Hold `[SPACE]` for low-gravity flight with thruster exhaust.
-  - **10x Plasma Torches**: Right click to place warm light sources in dark ruins.
+  - **Jetpack**: Press `[TAB]` to toggle full 3D flight thrusters.
+  - **Plasma Torches & Building Materials**: Place blocks and torches to establish pressurized bases.
 
 ---
 
@@ -39,12 +40,12 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 |---|---|
 | `TAB` | **Toggle Jetpack Flight Mode ON / OFF** |
 | `W`, `A`, `S`, `D` | Walk on hull (or in-flight 3D steering with Jetpack ON) |
-| `SPACE` | Jump (Jetpack OFF) / **Thrust towards look direction** (Jetpack ON) |
+| `SPACE` | Jump 1.5 blocks (Jetpack OFF) / **Thrust towards look direction** (Jetpack ON) |
 | `SHIFT` | Sprint on ground (Jetpack OFF) / **Thrust view-up** (Jetpack ON) |
 | `CTRL` | Crouch (Jetpack OFF) / **Thrust view-down** (Jetpack ON) |
-| `LEFT CLICK` | Fire Ray Gun / Hold to Mine Block |
-| `RIGHT CLICK` | Place Block or Torch |
-| `1` - `9` / Mouse Wheel | Select Hotbar Slot |
+| `LEFT CLICK` | **Fire Ray Gun / Throw Grenade (if selected)** / Hold to Mine |
+| `RIGHT CLICK` | **Throw Grenade (if selected)** / Place Block or Torch |
+| `1` - `9` / Mouse Wheel | Select Hotbar Slot (Slot 1: Ray Gun, Slot 2: Grenades x8) |
 | `F` | Toggle Dynamic Flashlight |
 | `E` | Suit Cargo & Inventory |
 | `C` | Tech Fabricator / Base Crafting |

@@ -107,7 +107,12 @@ void UI::drawItemIcon(ItemType item, float x, float y, float size) {
 }
 
 void UI::renderHUD(int screenW, int screenH, const Player& player, const World& world) {
-    // 0. Underwater Screen Overlay
+    // 0. Damage Flash Screen Overlay
+    if (player.getDamageFlash() > 0.01f) {
+        drawQuad(0, 0, (float)screenW, (float)screenH, Vec4(0.85f, 0.05f, 0.05f, 0.4f * player.getDamageFlash()));
+    }
+
+    // Underwater Screen Overlay
     if (player.isUnderwater()) {
         drawQuad(0, 0, (float)screenW, (float)screenH, Vec4(0.04f, 0.25f, 0.55f, 0.42f));
     }

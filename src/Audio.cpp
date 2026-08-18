@@ -89,6 +89,16 @@ void AudioSystem::playSound(SoundEffect effect) {
             v.freq = 100.0f;
             v.volume = 0.25f;
             break;
+        case SoundEffect::Explosion:
+            v.duration = 1.4f;
+            v.freq = 65.0f;
+            v.volume = 0.85f;
+            break;
+        case SoundEffect::GrenadeBounce:
+            v.duration = 0.14f;
+            v.freq = 1400.0f;
+            v.volume = 0.35f;
+            break;
     }
 
     m_voices.push_back(v);
@@ -200,6 +210,19 @@ void AudioSystem::audioCallback(void* userdata, Uint8* stream, int len) {
                 case SoundEffect::JetpackBurst: {
                     float noise = ((float)(rand() % 1000) / 1000.0f - 0.5f);
                     sample = noise * (1.0f - progress) * v.volume;
+                    break;
+                }
+                case SoundEffect::Explosion: {
+                    float subBass = std::sin(v.phase) * (1.0f - progress);
+                    v.phase += (v.freq * (1.0f - progress * 0.7f)) * dt * 2.0f * 3.14159f;
+                    float noise = ((float)(rand() % 2000) / 1000.0f - 1.0f);
+                    float expDecay = std::exp(-progress * 4.5f);
+                    sample = (subBass * 0.5f + noise * expDecay * 0.8f) * v.volume;
+                    break;
+                }
+                case SoundEffect::GrenadeBounce: {
+                    v.phase += v.freq * dt * 2.0f * 3.14159f;
+                    sample = (std::sin(v.phase) + std::sin(v.phase * 2.41f) * 0.4f) * (1.0f - progress) * v.volume;
                     break;
                 }
             }

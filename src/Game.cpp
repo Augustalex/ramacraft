@@ -188,11 +188,18 @@ void Game::handleEvent(const SDL_Event& event) {
                     const ItemStack& sel = m_player.getInventory().getSelectedItem();
                     if (sel.type == ItemType::RayGun) {
                         m_player.fireRayGun(m_world);
+                    } else if (sel.type == ItemType::Grenade) {
+                        m_player.throwGrenade(m_world);
                     } else {
                         m_player.startMining();
                     }
                 } else if (event.button.button == SDL_BUTTON_RIGHT) {
-                    m_player.placeSelectedBlock(m_world);
+                    const ItemStack& sel = m_player.getInventory().getSelectedItem();
+                    if (sel.type == ItemType::Grenade) {
+                        m_player.throwGrenade(m_world);
+                    } else {
+                        m_player.placeSelectedBlock(m_world);
+                    }
                 }
             }
         }
@@ -210,7 +217,7 @@ void Game::update(float dt) {
     m_world.update(dt, m_player.getPosition());
     ItemEntityManager::instance().update(dt, m_world, m_player);
     BiotManager::instance().update(dt, m_world, m_player);
-    ProjectileManager::instance().update(dt, m_world, BiotManager::instance());
+    ProjectileManager::instance().update(dt, m_world, BiotManager::instance(), m_player);
     NetworkManager::instance().update(dt, m_world, m_player);
     UI::instance().update(dt);
 }

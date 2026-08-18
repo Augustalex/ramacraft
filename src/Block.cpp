@@ -372,6 +372,7 @@ void BlockRegistry::init() {
     regItem(ItemType::MiningDrill, "Mining Laser Drill", "High-frequency plasma excavator for instant matter breakdown [Hold: Left Click]", true, false, BlockType::Air, 8, 3);
     regItem(ItemType::Flashlight, "Flashlight", "High-power directional suit floodlight [Toggle: F]", true, false, BlockType::Air, 1, 2);
     regItem(ItemType::Jetpack, "Thruster Jetpack", "Personal low-g propulsion unit [Hold: Space]", true, false, BlockType::Air, 2, 2);
+    regItem(ItemType::Grenade, "Plasma Frag Grenade", "Throwable high-explosive ordnance with 2.5s fuse [Left/Right Click]", false, false, BlockType::Air, 9, 3);
 
     regItem(ItemType::TitaniumOreItem, "Titanium Ore", "Raw crystalline titanium harvested from Rama's ribs", false, false, BlockType::Air, 3, 2);
     regItem(ItemType::TitaniumIngot, "Titanium Ingot", "Refined structural alloy for base expansion", false, false, BlockType::Air, 4, 2);

@@ -27,7 +27,10 @@ enum class PacketType : uint8_t {
     PlayerState   = 5,
     BlockSet      = 6,
     LaserShoot    = 7,
-    PlayerLeave   = 8
+    PlayerLeave   = 8,
+    GrenadeThrow  = 9,
+    DamagePvP     = 10,
+    Explosion     = 11
 };
 
 #pragma pack(push, 1)
@@ -91,6 +94,26 @@ struct PacketLaserShoot {
     uint8_t isOverclocked;
 };
 
+struct PacketGrenadeThrow {
+    PacketHeader header;
+    Vec3 origin;
+    Vec3 vel;
+};
+
+struct PacketDamagePvP {
+    PacketHeader header;
+    uint8_t targetPlayerId;
+    float damage;
+    Vec3 knockback;
+};
+
+struct PacketExplosion {
+    PacketHeader header;
+    Vec3 pos;
+    float radius;
+    float maxDamage;
+};
+
 struct PacketPlayerLeave {
     PacketHeader header;
 };
@@ -142,14 +165,19 @@ public:
 
     void sendBlockChange(int x, int y, int z, BlockType type);
     void sendShoot(const Vec3& origin, const Vec3& dir, float speed, float damage, bool overclocked);
+    void sendGrenadeThrow(const Vec3& origin, const Vec3& vel);
+    void sendDamagePvP(uint8_t targetPlayerId, float damage, const Vec3& knockback);
+    void sendExplosion(const Vec3& pos, float radius, float maxDamage);
 
     NetworkRole getRole() const { return m_role; }
     bool isConnected() const { return m_role != NetworkRole::Offline; }
     bool isHost() const { return m_role == NetworkRole::Host; }
     bool isClient() const { return m_role == NetworkRole::Client; }
+    uint8_t getLocalPlayerId() const { return m_localPlayerId; }
 
     const std::vector<DiscoveredServer>& getDiscoveredServers() const { return m_discoveredServers; }
     const std::unordered_map<uint8_t, RemotePlayer>& getRemotePlayers() const { return m_remotePlayers; }
+    std::unordered_map<uint8_t, RemotePlayer>& getRemotePlayersMutable() { return m_remotePlayers; }
 
     std::string getStatusText() const;
     int getPort() const { return m_gamePort; }

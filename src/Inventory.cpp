@@ -8,11 +8,11 @@ Inventory::Inventory() {
 void Inventory::initStartingGear() {
     for (auto& s : m_slots) s.clear();
 
-    // Hotbar Setup with dedicated Mining Drill and building gear:
+    // Hotbar Setup with dedicated Combat Ray Gun, Grenades, Mining Drill and building gear:
     m_slots[0] = {ItemType::RayGun, 1};                  // 1: Combat Ray Gun
-    m_slots[1] = {ItemType::MiningDrill, 1};             // 2: Plasma Mining Laser Drill
-    m_slots[2] = {ItemType::Flashlight, 1};              // 3: Directional Flashlight
-    m_slots[3] = {ItemType::Jetpack, 1};                 // 4: Infinite Jetpack
+    m_slots[1] = {ItemType::Grenade, 8};                 // 2: Plasma Frag Grenades (x8)
+    m_slots[2] = {ItemType::MiningDrill, 1};             // 3: Plasma Mining Laser Drill
+    m_slots[3] = {ItemType::Flashlight, 1};              // 4: Directional Flashlight
     m_slots[4] = {ItemType::BlockItem_Torch, 20};        // 5: Plasma Torches
     m_slots[5] = {ItemType::BlockItem_BaseWall, 32};     // 6: Habitat Wall blocks
     m_slots[6] = {ItemType::BlockItem_ReinforcedGlass, 16};// 7: Dome Glass
