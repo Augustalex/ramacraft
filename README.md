@@ -21,6 +21,10 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
   - High-Capacity Thruster Jetpack Upgrade
   - Overclocked Twin-Beam Ray Gun (with instant mining drill)
   - Ruin Scanner Radar & Oxygen Recyclers
+- **WiFi LAN Multiplayer (`[M]` Key)**:
+  - Play cooperatively over your local WiFi network.
+  - Automatic LAN beacon discovery finds active games on your network with 1-click connect.
+  - Full real-time synchronization of 3D astronaut movements, jetpack flights, mining, building, and laser gun combat.
 - **Starting Equipment**:
   - **Ray Gun**: Left click to fire plasma bolts or hold to mine blocks.
   - **Flashlight**: Press `[F]` to toggle directional spotlight.
@@ -33,7 +37,7 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 
 | Key / Action | Function |
 |---|---|
-| `W`, `A`, `S`, `D` | Move along Rama's hull |
+| `W`, `A`, `S`, `D` / Arrows | Move along Rama's hull & steer jetpack |
 | `SPACE` | Thruster Jetpack (Hold for flight) |
 | `LEFT CLICK` | Fire Ray Gun / Hold to Mine Block |
 | `RIGHT CLICK` | Place Block or Torch |
@@ -41,6 +45,7 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 | `F` | Toggle Dynamic Flashlight |
 | `E` or `TAB` | Suit Cargo & Inventory |
 | `C` | Tech Fabricator / Base Crafting |
+| `M` | WiFi LAN Multiplayer Menu |
 | `K` | Toggle Cylindrical World Curvature |
 | `ESC` | Release Cursor / Close Menus |
 
@@ -53,6 +58,17 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 make
 ./bin/ramacraft
 ```
+
+### Multiplayer LAN Launch:
+- **Host a game directly on port 7777**:
+  ```bash
+  ./bin/ramacraft --host 7777
+  ```
+- **Join a game on your local WiFi**:
+  ```bash
+  ./bin/ramacraft --join <HOST_IP> 7777
+  ```
+- *(Or simply start the game and press `[M]` to host or join discovered LAN games visually!)*
 
 ### WebGL 2 / Browser Build (with Emscripten):
 ```bash
