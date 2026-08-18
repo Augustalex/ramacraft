@@ -1,6 +1,8 @@
 #include "Audio.hpp"
 #include <iostream>
 #include <random>
+#include <algorithm>
+#include <cmath>
 
 AudioSystem& AudioSystem::instance() {
     static AudioSystem s_audio;

@@ -2,6 +2,8 @@
 #include "ItemEntity.hpp"
 #include "Network.hpp"
 #include <iostream>
+#include <algorithm>
+#include <cmath>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
