@@ -33,13 +33,13 @@ Vec3 Player::getForward() const {
     float sinP = std::sin(m_pitch * DEG2RAD);
     float cosY = std::cos(m_yaw * DEG2RAD);
     float sinY = std::sin(m_yaw * DEG2RAD);
-    return Vec3(sinY * cosP, -sinP, cosY * cosP).normalized();
+    return Vec3(-sinY * cosP, -sinP, cosY * cosP).normalized();
 }
 
 Vec3 Player::getRight() const {
     float cosY = std::cos(m_yaw * DEG2RAD);
     float sinY = std::sin(m_yaw * DEG2RAD);
-    return Vec3(-cosY, 0.0f, sinY).normalized();
+    return Vec3(-cosY, 0.0f, -sinY).normalized();
 }
 
 Vec3 Player::getWorldPos3D() const {
@@ -70,7 +70,7 @@ Vec3 Player::getForward3D() const {
     float cosY = std::cos(m_yaw * DEG2RAD);
     float sinY = std::sin(m_yaw * DEG2RAD);
 
-    Vec3 fwd = tangent * (sinY * cosP) + up * (-sinP) + longit * (cosY * cosP);
+    Vec3 fwd = tangent * (-sinY * cosP) + up * (-sinP) + longit * (cosY * cosP);
     return fwd.normalized();
 }
 
@@ -277,13 +277,13 @@ void Player::updatePhysics(float dt, World& world) {
     float sinY = std::sin(m_yaw * DEG2RAD);
 
     // Forward and Right vectors in voxel plane (Yaw = 0 -> Forward = +Z, Right = -X)
-    Vec3 fwdVec(sinY, 0.0f, cosY);
-    Vec3 rightVec(-cosY, 0.0f, sinY);
+    Vec3 fwdVec(-sinY, 0.0f, cosY);
+    Vec3 rightVec(-cosY, 0.0f, -sinY);
 
-    // Camera view directions in voxel coordinates
-    Vec3 lookFwd(sinY * cosP, -sinP, cosY * cosP);
-    Vec3 lookRight(-cosY, 0.0f, sinY);
-    Vec3 lookUp(sinY * sinP, cosP, cosY * sinP);
+    // 3D Camera view directions in voxel coordinates
+    Vec3 lookFwd(-sinY * cosP, -sinP, cosY * cosP);
+    Vec3 lookRight(-cosY, 0.0f, -sinY);
+    Vec3 lookUp(-sinY * sinP, cosP, cosY * sinP);
 
     Vec3 inputDir(0, 0, 0);
     if (moveFwd) inputDir += fwdVec;
@@ -298,7 +298,7 @@ void Player::updatePhysics(float dt, World& world) {
         m_bobTime += dt * 2.0f;
     }
 
-    float walkSpeed = (m_isGrounded && pressShift) ? 9.5f : 5.5f;
+    float walkSpeed = (m_isGrounded && pressShift) ? 9.0f : 5.0f;
 
     // Check Jetpack Activation: Space (Look-Fwd), Shift in-air (Look-Up), Ctrl (Look-Down)
     bool jetpackRequested = pressSpace || (pressShift && !m_isGrounded) || pressCtrl;
@@ -308,7 +308,7 @@ void Player::updatePhysics(float dt, World& world) {
         m_isGrounded = false;
         m_jetpackFuel = 100.0f;
 
-        float thrustPower = 26.0f;
+        float thrustPower = 28.0f;
         Vec3 jetpackThrust(0, 0, 0);
 
         // 1. Space thrusts towards where looking
@@ -316,12 +316,12 @@ void Player::updatePhysics(float dt, World& world) {
             jetpackThrust += lookFwd * thrustPower;
         }
 
-        // 2. Shift thrusts upwards relative to where looking
+        // 2. Shift thrusts upwards relative to view
         if (pressShift) {
             jetpackThrust += lookUp * thrustPower;
         }
 
-        // 3. Ctrl thrusts downwards relative to where looking
+        // 3. Ctrl thrusts downwards relative to view
         if (pressCtrl) {
             jetpackThrust -= lookUp * thrustPower;
         }
@@ -345,38 +345,39 @@ void Player::updatePhysics(float dt, World& world) {
             m_vel.z = inputDir.z * walkSpeed;
 
             if (pressSpace) {
-                m_vel.y = 6.8f; // Smooth jump impulse
+                m_vel.y = 8.5f; // Standard jump impulse
                 m_isGrounded = false;
                 AudioSystem::instance().playSound(SoundEffect::BlockPlace);
             }
         } else {
-            // Gentle Rama Gravity (8.0 m/s^2 - comfortable and floaty)
+            // Natural Minecraft-style Gravity & Drag
             float groundGravZone = 60.0f;
             float ceilingGravZone = (World::CYLINDER_RADIUS * 2.0f - 60.0f);
 
             if (m_pos.y <= groundGravZone) {
-                float factor = std::clamp(1.0f - (m_pos.y - 16.0f) / (groundGravZone - 16.0f), 0.35f, 1.0f);
-                m_vel.y -= 8.5f * factor * dt;
+                m_vel.y -= 18.0f * dt;
+                m_vel.y *= 0.98f; // standard air drag
             } else if (m_pos.y >= ceilingGravZone) {
-                m_vel.y += 8.5f * dt;
+                m_vel.y += 18.0f * dt;
+                m_vel.y *= 0.98f;
             } else {
                 // Pure zero-g mid-air
                 m_vel.y *= 0.99f;
             }
 
-            // Air steering & smooth deceleration
+            // Air steering & friction
             if (inputDir.lengthSq() > 0.001f) {
-                m_vel.x += inputDir.x * (walkSpeed * 0.35f);
-                m_vel.z += inputDir.z * (walkSpeed * 0.35f);
+                m_vel.x += inputDir.x * (walkSpeed * 0.4f);
+                m_vel.z += inputDir.z * (walkSpeed * 0.4f);
             }
-            m_vel.x *= 0.96f;
-            m_vel.z *= 0.96f;
+            m_vel.x *= 0.95f;
+            m_vel.z *= 0.95f;
         }
     }
 
     // Terminal velocity clamps
     m_vel.x = std::clamp(m_vel.x, -24.0f, 24.0f);
-    m_vel.y = std::clamp(m_vel.y, -18.0f, 24.0f);
+    m_vel.y = std::clamp(m_vel.y, -26.0f, 24.0f);
     m_vel.z = std::clamp(m_vel.z, -24.0f, 24.0f);
 
     checkVoxelCollisions(dt, world);
@@ -385,133 +386,123 @@ void Player::updatePhysics(float dt, World& world) {
 void Player::checkVoxelCollisions(float dt, World& world) {
     float halfW = 0.3f;
     float height = 1.8f;
+    float eps = 0.001f;
 
-    // 1. Move along Y (Vertical)
-    m_pos.y += m_vel.y * dt;
-    m_isGrounded = false;
+    float dx = m_vel.x * dt;
+    float dy = m_vel.y * dt;
+    float dz = m_vel.z * dt;
 
-    int minX = (int)std::floor(m_pos.x - halfW);
-    int maxX = (int)std::floor(m_pos.x + halfW);
-    int minY = (int)std::floor(m_pos.y);
-    int maxY = (int)std::floor(m_pos.y + height);
-    int minZ = (int)std::floor(m_pos.z - halfW);
-    int maxZ = (int)std::floor(m_pos.z + halfW);
+    float origDy = dy;
+    float origDx = dx;
+    float origDz = dz;
 
-    for (int y = minY; y <= maxY; ++y) {
-        if (y < 0 || y >= CHUNK_SIZE_Y) continue;
-        for (int x = minX; x <= maxX; ++x) {
-            for (int z = minZ; z <= maxZ; ++z) {
+    // Broadphase bounding box for query
+    float minQX = std::min(m_pos.x - halfW, m_pos.x - halfW + dx) - 1.0f;
+    float maxQX = std::max(m_pos.x + halfW, m_pos.x + halfW + dx) + 1.0f;
+    float minQY = std::min(m_pos.y, m_pos.y + dy) - 1.0f;
+    float maxQY = std::max(m_pos.y + height, m_pos.y + height + dy) + 1.0f;
+    float minQZ = std::min(m_pos.z - halfW, m_pos.z - halfW + dz) - 1.0f;
+    float maxQZ = std::max(m_pos.z + halfW, m_pos.z + halfW + dz) + 1.0f;
+
+    struct BlockAABB {
+        float minX, minY, minZ;
+        float maxX, maxY, maxZ;
+    };
+    std::vector<BlockAABB> blocks;
+
+    int qMinX = (int)std::floor(minQX);
+    int qMaxX = (int)std::floor(maxQX);
+    int qMinY = std::max(0, (int)std::floor(minQY));
+    int qMaxY = std::min((int)CHUNK_SIZE_Y - 1, (int)std::floor(maxQY));
+    int qMinZ = (int)std::floor(minQZ);
+    int qMaxZ = (int)std::floor(maxQZ);
+
+    for (int y = qMinY; y <= qMaxY; ++y) {
+        for (int x = qMinX; x <= qMaxX; ++x) {
+            for (int z = qMinZ; z <= qMaxZ; ++z) {
                 BlockType bt = world.getBlock(x, y, z);
                 if (BlockRegistry::get(bt).isSolid) {
-                    if (m_vel.y <= 0.0f) {
-                        m_pos.y = (float)(y + 1);
-                        m_vel.y = 0.0f;
-                        m_isGrounded = true;
-                    } else if (m_vel.y > 0.0f) {
-                        m_pos.y = (float)y - height;
-                        m_vel.y = 0.0f;
-                    }
+                    blocks.push_back({(float)x, (float)y, (float)z, (float)(x + 1), (float)(y + 1), (float)(z + 1)});
                 }
             }
         }
     }
 
-    // Ground Probe: if walking on uneven ground without jumping, snap feet to solid block below
-    if (!m_isGrounded && m_vel.y <= 0.0f) {
-        int footY = (int)std::floor(m_pos.y - 0.25f);
-        if (footY >= 0 && footY < CHUNK_SIZE_Y) {
-            for (int x = minX; x <= maxX; ++x) {
-                for (int z = minZ; z <= maxZ; ++z) {
-                    BlockType bt = world.getBlock(x, footY, z);
-                    if (BlockRegistry::get(bt).isSolid) {
-                        float dist = m_pos.y - (float)(footY + 1);
-                        if (dist >= 0.0f && dist <= 0.35f) {
-                            m_pos.y = (float)(footY + 1);
-                            m_vel.y = 0.0f;
-                            m_isGrounded = true;
-                            break;
-                        }
-                    }
+    // 1. Move along Y-axis (Swept AABB)
+    for (const auto& b : blocks) {
+        if (m_pos.x + halfW > b.minX + eps && m_pos.x - halfW < b.maxX - eps &&
+            m_pos.z + halfW > b.minZ + eps && m_pos.z - halfW < b.maxZ - eps) {
+            if (dy < 0.0f && m_pos.y >= b.maxY - eps) {
+                float dist = b.maxY - m_pos.y;
+                if (dist > dy) {
+                    dy = dist;
                 }
-                if (m_isGrounded) break;
+            } else if (dy > 0.0f && m_pos.y + height <= b.minY + eps) {
+                float dist = b.minY - (m_pos.y + height);
+                if (dist < dy) {
+                    dy = dist;
+                }
             }
         }
     }
+    m_pos.y += dy;
 
-    // 2. Move along X (Circumference)
-    m_pos.x += m_vel.x * dt;
+    if (origDy < 0.0f && dy > origDy) {
+        m_isGrounded = true;
+        m_vel.y = 0.0f;
+    } else {
+        m_isGrounded = false;
+        if (origDy > 0.0f && dy < origDy) {
+            m_vel.y = 0.0f;
+        }
+    }
+
+    // 2. Move along X-axis (Swept AABB)
+    for (const auto& b : blocks) {
+        if (m_pos.y + height > b.minY + eps && m_pos.y < b.maxY - eps &&
+            m_pos.z + halfW > b.minZ + eps && m_pos.z - halfW < b.maxZ - eps) {
+            if (dx < 0.0f && m_pos.x - halfW >= b.maxX - eps) {
+                float dist = b.maxX - (m_pos.x - halfW);
+                if (dist > dx) {
+                    dx = dist;
+                }
+            } else if (dx > 0.0f && m_pos.x + halfW <= b.minX + eps) {
+                float dist = b.minX - (m_pos.x + halfW);
+                if (dist < dx) {
+                    dx = dist;
+                }
+            }
+        }
+    }
+    m_pos.x += dx;
     m_pos.x = std::fmod(m_pos.x + World::CIRCUMFERENCE, World::CIRCUMFERENCE);
+    if (origDx != dx) {
+        m_vel.x = 0.0f;
+    }
 
-    minX = (int)std::floor(m_pos.x - halfW);
-    maxX = (int)std::floor(m_pos.x + halfW);
-    minY = (int)std::floor(m_pos.y + 0.15f);
-    maxY = (int)std::floor(m_pos.y + height - 0.1f);
-    minZ = (int)std::floor(m_pos.z - halfW);
-    maxZ = (int)std::floor(m_pos.z + halfW);
-
-    for (int x = minX; x <= maxX; ++x) {
-        for (int z = minZ; z <= maxZ; ++z) {
-            for (int y = minY; y <= maxY; ++y) {
-                if (y < 0 || y >= CHUNK_SIZE_Y) continue;
-                BlockType bt = world.getBlock(x, y, z);
-                if (BlockRegistry::get(bt).isSolid) {
-                    // Smooth Step-Up (0.6m max step over blocks)
-                    int aboveY = y + 1;
-                    BlockType aboveBt = (aboveY < CHUNK_SIZE_Y) ? world.getBlock(x, aboveY, z) : BlockType::Air;
-                    if (m_isGrounded && !BlockRegistry::get(aboveBt).isSolid && (aboveY - m_pos.y) <= 0.65f) {
-                        m_pos.y = (float)aboveY;
-                        continue;
-                    }
-
-                    if (m_vel.x > 0.0f) {
-                        m_pos.x = (float)x - halfW - 0.001f;
-                        m_vel.x = 0.0f;
-                    } else if (m_vel.x < 0.0f) {
-                        m_pos.x = (float)(x + 1) + halfW + 0.001f;
-                        m_vel.x = 0.0f;
-                    }
+    // 3. Move along Z-axis (Swept AABB)
+    for (const auto& b : blocks) {
+        if (m_pos.y + height > b.minY + eps && m_pos.y < b.maxY - eps &&
+            m_pos.x + halfW > b.minX + eps && m_pos.x - halfW < b.maxX - eps) {
+            if (dz < 0.0f && m_pos.z - halfW >= b.maxZ - eps) {
+                float dist = b.maxZ - (m_pos.z - halfW);
+                if (dist > dz) {
+                    dz = dist;
+                }
+            } else if (dz > 0.0f && m_pos.z + halfW <= b.minZ + eps) {
+                float dist = b.minZ - (m_pos.z + halfW);
+                if (dist < dz) {
+                    dz = dist;
                 }
             }
         }
     }
-
-    // 3. Move along Z (Length)
-    m_pos.z += m_vel.z * dt;
-
-    minX = (int)std::floor(m_pos.x - halfW);
-    maxX = (int)std::floor(m_pos.x + halfW);
-    minY = (int)std::floor(m_pos.y + 0.15f);
-    maxY = (int)std::floor(m_pos.y + height - 0.1f);
-    minZ = (int)std::floor(m_pos.z - halfW);
-    maxZ = (int)std::floor(m_pos.z + halfW);
-
-    for (int z = minZ; z <= maxZ; ++z) {
-        for (int x = minX; x <= maxX; ++x) {
-            for (int y = minY; y <= maxY; ++y) {
-                if (y < 0 || y >= CHUNK_SIZE_Y) continue;
-                BlockType bt = world.getBlock(x, y, z);
-                if (BlockRegistry::get(bt).isSolid) {
-                    // Smooth Step-Up (0.6m max step over blocks)
-                    int aboveY = y + 1;
-                    BlockType aboveBt = (aboveY < CHUNK_SIZE_Y) ? world.getBlock(x, aboveY, z) : BlockType::Air;
-                    if (m_isGrounded && !BlockRegistry::get(aboveBt).isSolid && (aboveY - m_pos.y) <= 0.65f) {
-                        m_pos.y = (float)aboveY;
-                        continue;
-                    }
-
-                    if (m_vel.z > 0.0f) {
-                        m_pos.z = (float)z - halfW - 0.001f;
-                        m_vel.z = 0.0f;
-                    } else if (m_vel.z < 0.0f) {
-                        m_pos.z = (float)(z + 1) + halfW + 0.001f;
-                        m_vel.z = 0.0f;
-                    }
-                }
-            }
-        }
+    m_pos.z += dz;
+    if (origDz != dz) {
+        m_vel.z = 0.0f;
     }
 
-    // Central Spindle collision (radius = 16 blocks around Y = R = 244.46)
+    // Spindle collision
     float axisY = World::CYLINDER_RADIUS;
     float distFromSpindle = std::abs(m_pos.y - axisY);
     if (distFromSpindle < 16.0f) {
@@ -524,7 +515,7 @@ void Player::checkVoxelCollisions(float dt, World& world) {
         }
     }
 
-    // Ground floor bedrock clamp
+    // Bedrock ground floor safeguard
     if (m_pos.y < 4.0f) {
         m_pos.y = 4.0f;
         m_vel.y = 0.0f;
