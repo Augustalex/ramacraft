@@ -490,11 +490,11 @@ void UI::render(const Shader& uiShader, int screenWidth, int screenHeight, const
     glDisable(GL_BLEND);
 }
 
-void UI::handleMouseClick(int mouseX, int mouseY, int button, Player& player) {
+void UI::handleMouseClick(int mouseX, int mouseY, int screenW, int screenH, int button, Player& player) {
     if (m_menuState == UIMenuState::CraftingScreen) {
         float winW = 620.0f, winH = 420.0f;
-        float wx = (1280.0f - winW) * 0.5f;
-        float wy = (720.0f - winH) * 0.5f;
+        float wx = ((float)screenW - winW) * 0.5f;
+        float wy = ((float)screenH - winH) * 0.5f;
 
         const auto& recipes = CraftingSystem::instance().getRecipes();
         float listX = wx + 20.0f;
@@ -523,8 +523,8 @@ void UI::handleMouseClick(int mouseX, int mouseY, int button, Player& player) {
         }
     } else if (m_menuState == UIMenuState::InventoryScreen) {
         float winW = 460.0f, winH = 340.0f;
-        float wx = (1280.0f - winW) * 0.5f;
-        float wy = (720.0f - winH) * 0.5f;
+        float wx = ((float)screenW - winW) * 0.5f;
+        float wy = ((float)screenH - winH) * 0.5f;
 
         float gridX = wx + 24.0f;
         float gridY = wy + 50.0f;
@@ -566,8 +566,8 @@ void UI::handleMouseClick(int mouseX, int mouseY, int button, Player& player) {
         }
     } else if (m_menuState == UIMenuState::MultiplayerScreen) {
         float winW = 680.0f, winH = 480.0f;
-        float wx = (1280.0f - winW) * 0.5f;
-        float wy = (720.0f - winH) * 0.5f;
+        float wx = ((float)screenW - winW) * 0.5f;
+        float wy = ((float)screenH - winH) * 0.5f;
 
         // 1. Host Button Click
         float hostBtnX = wx + 30.0f, hostBtnY = wy + 115.0f;

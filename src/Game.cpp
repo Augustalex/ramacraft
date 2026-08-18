@@ -179,7 +179,13 @@ void Game::handleEvent(const SDL_Event& event) {
         }
     } else if (event.type == SDL_MOUSEBUTTONDOWN) {
         if (UI::instance().isMenuOpen()) {
-            UI::instance().handleMouseClick(event.button.x, event.button.y, event.button.button, m_player);
+            int drawW, drawH;
+            SDL_GL_GetDrawableSize(m_window, &drawW, &drawH);
+            float scaleX = (m_width > 0) ? ((float)drawW / (float)m_width) : 1.0f;
+            float scaleY = (m_height > 0) ? ((float)drawH / (float)m_height) : 1.0f;
+            int mx = (int)(event.button.x * scaleX);
+            int my = (int)(event.button.y * scaleY);
+            UI::instance().handleMouseClick(mx, my, drawW, drawH, event.button.button, m_player);
         } else {
             if (!m_relativeMouse) {
                 setRelativeMouse(true);
@@ -288,7 +294,7 @@ void Game::render() {
     }
 
     // 10. Render 2D UI / HUD
-    UI::instance().render(m_uiShader, m_width, m_height, m_player, m_world);
+    UI::instance().render(m_uiShader, drawW, drawH, m_player, m_world);
 
     SDL_GL_SwapWindow(m_window);
 }

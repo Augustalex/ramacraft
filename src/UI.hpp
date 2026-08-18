@@ -28,7 +28,7 @@ public:
     void update(float dt);
     void render(const Shader& uiShader, int screenWidth, int screenHeight, const Player& player, const World& world);
 
-    void handleMouseClick(int mouseX, int mouseY, int button, Player& player);
+    void handleMouseClick(int mouseX, int mouseY, int screenW, int screenH, int button, Player& player);
     void toggleInventory();
     void toggleCrafting();
     void toggleMultiplayer();
@@ -57,7 +57,7 @@ private:
 
     std::vector<UIVertex> m_mesh;
 
-    void drawQuad(float x, float y, float w, float h, const Vec4& color, float u0 = 0.0f, float v0 = 0.0f, float u1 = 0.0f, float v1 = 0.0f);
+    void drawQuad(float x, float y, float w, float h, const Vec4& color, float u0 = -1.0f, float v0 = -1.0f, float u1 = -1.0f, float v1 = -1.0f);
     void drawText(const std::string& text, float x, float y, float scale, const Vec4& color);
     void drawItemIcon(ItemType item, float x, float y, float size);
 

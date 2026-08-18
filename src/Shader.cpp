@@ -433,7 +433,7 @@ uniform int uUseTexture;
 out vec4 FragColor;
 
 void main() {
-    if (uUseTexture == 1) {
+    if (uUseTexture == 1 && vTexCoord.x >= 0.0) {
         vec4 texColor = texture(uAtlas, vTexCoord);
         FragColor = texColor * vColor;
     } else {
