@@ -366,15 +366,15 @@ void Player::updatePhysics(float dt, World& world) {
         m_jetpackActive = false;
         AudioSystem::instance().setJetpackHum(false);
 
-        float walkSpeed = (m_isGrounded && pressShift) ? 9.0f : 5.0f;
+        float walkSpeed = (m_isGrounded && pressShift) ? 8.5f : 5.0f;
+
+        // In survival mode, horizontal movement is directly controlled by input
+        m_vel.x = inputDir.x * walkSpeed;
+        m_vel.z = inputDir.z * walkSpeed;
 
         if (m_isGrounded) {
-            // Ground walking physics
-            m_vel.x = inputDir.x * walkSpeed;
-            m_vel.z = inputDir.z * walkSpeed;
-
             if (pressSpace) {
-                m_vel.y = 8.5f; // Standard jump impulse
+                m_vel.y = 6.2f; // Clean, standard ~1.2m jump height
                 m_isGrounded = false;
                 AudioSystem::instance().playSound(SoundEffect::BlockPlace);
             }
@@ -384,23 +384,15 @@ void Player::updatePhysics(float dt, World& world) {
             float ceilingGravZone = (World::CYLINDER_RADIUS * 2.0f - 60.0f);
 
             if (m_pos.y <= groundGravZone) {
-                m_vel.y -= 18.0f * dt;
-                m_vel.y *= 0.98f; // standard air drag
+                m_vel.y -= 16.0f * dt;
+                m_vel.y *= 0.985f; // standard air drag
             } else if (m_pos.y >= ceilingGravZone) {
-                m_vel.y += 18.0f * dt;
-                m_vel.y *= 0.98f;
+                m_vel.y += 16.0f * dt;
+                m_vel.y *= 0.985f;
             } else {
                 // Pure zero-g mid-air
                 m_vel.y *= 0.99f;
             }
-
-            // In-air gentle steering
-            if (inputDir.lengthSq() > 0.001f) {
-                m_vel.x += inputDir.x * (walkSpeed * 0.35f);
-                m_vel.z += inputDir.z * (walkSpeed * 0.35f);
-            }
-            m_vel.x *= 0.95f;
-            m_vel.z *= 0.95f;
         }
     }
 
