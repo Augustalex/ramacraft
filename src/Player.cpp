@@ -266,13 +266,23 @@ void Player::updatePhysics(float dt, World& world) {
     bool moveBack = state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN];
     bool moveRight = state[SDL_SCANCODE_D] || state[SDL_SCANCODE_RIGHT];
     bool moveLeft = state[SDL_SCANCODE_A] || state[SDL_SCANCODE_LEFT];
-    bool sprint = (state[SDL_SCANCODE_LSHIFT] != 0);
 
-    float rad = m_yaw * DEG2RAD;
-    float sinY = std::sin(rad);
-    float cosY = std::cos(rad);
+    bool pressSpace = (state[SDL_SCANCODE_SPACE] != 0);
+    bool pressShift = (state[SDL_SCANCODE_LSHIFT] != 0 || state[SDL_SCANCODE_RSHIFT] != 0);
+    bool pressCtrl  = (state[SDL_SCANCODE_LCTRL]  != 0 || state[SDL_SCANCODE_RCTRL]  != 0);
 
-    // Tangent X and Longitudinal Z vectors in unrolled voxel space
+    float cosP = std::cos(m_pitch * DEG2RAD);
+    float sinP = std::sin(m_pitch * DEG2RAD);
+    float cosY = std::cos(m_yaw * DEG2RAD);
+    float sinY = std::sin(m_yaw * DEG2RAD);
+
+    // Camera view directions in voxel coordinates
+    // (Pitch < 0 when looking up -> lookFwd.y > 0)
+    Vec3 lookFwd(sinY * cosP, -sinP, cosY * cosP);
+    Vec3 lookRight(cosY, 0.0f, -sinY);
+    Vec3 lookUp(-sinY * sinP, cosP, -cosY * sinP);
+
+    // Ground walk direction in X/Z plane
     Vec3 fwdVec(sinY, 0.0f, cosY);
     Vec3 rightVec(cosY, 0.0f, -sinY);
 
@@ -284,54 +294,71 @@ void Player::updatePhysics(float dt, World& world) {
 
     if (inputDir.lengthSq() > 0.001f) {
         inputDir = inputDir.normalized();
-        m_bobTime += dt * (sprint ? 14.0f : 9.5f);
+        m_bobTime += dt * (pressShift ? 14.0f : 9.5f);
     } else {
         m_bobTime += dt * 2.0f;
     }
 
-    float walkSpeed = sprint ? 10.0f : 5.5f;
+    float walkSpeed = (m_isGrounded && pressShift) ? 10.0f : 5.5f;
 
-    if (m_isGrounded) {
-        // Ground walking physics
-        m_vel.x = inputDir.x * walkSpeed;
-        m_vel.z = inputDir.z * walkSpeed;
+    // Check Jetpack Activation: Space (Look-Fwd), Shift in-air (Look-Up), Ctrl (Look-Down)
+    bool jetpackRequested = pressSpace || (pressShift && !m_isGrounded) || pressCtrl;
 
-        if (state[SDL_SCANCODE_SPACE]) {
-            m_vel.y = 8.5f; // Jump impulse
-            m_isGrounded = false;
-            AudioSystem::instance().playSound(SoundEffect::BlockPlace);
+    if (jetpackRequested) {
+        m_jetpackActive = true;
+        m_isGrounded = false;
+        m_jetpackFuel = 100.0f;
+
+        float thrustPower = 30.0f;
+        Vec3 jetpackThrust(0, 0, 0);
+
+        // 1. Space thrusts towards where looking
+        if (pressSpace) {
+            jetpackThrust += lookFwd * thrustPower;
         }
+
+        // 2. Shift thrusts upwards relative to where looking
+        if (pressShift) {
+            jetpackThrust += lookUp * thrustPower;
+        }
+
+        // 3. Ctrl thrusts downwards relative to where looking
+        if (pressCtrl) {
+            jetpackThrust -= lookUp * thrustPower;
+        }
+
+        // WASD directional steering in flight
+        if (inputDir.lengthSq() > 0.001f) {
+            jetpackThrust += inputDir * (thrustPower * 0.4f);
+        }
+
+        m_vel += jetpackThrust * dt;
+
+        AudioSystem::instance().setJetpackHum(true);
+        ProjectileManager::instance().spawnJetpackExhaust(getWorldPos3D() - Vec3(0, 0.4f, 0), Vec3(0, -1, 0));
     } else {
-        // In-air / Jetpack physics
-        if (state[SDL_SCANCODE_SPACE]) {
-            m_jetpackActive = true;
-            m_jetpackFuel = 100.0f;
+        m_jetpackActive = false;
+        AudioSystem::instance().setJetpackHum(false);
 
-            // Jetpack vertical thrust
-            m_vel.y = std::min(m_vel.y + 28.0f * dt, 22.0f);
-
-            // In-flight directional thrust
-            if (inputDir.lengthSq() > 0.001f) {
-                m_vel.x = inputDir.x * (walkSpeed * 1.4f);
-                m_vel.z = inputDir.z * (walkSpeed * 1.4f);
-            }
-
-            AudioSystem::instance().setJetpackHum(true);
-            ProjectileManager::instance().spawnJetpackExhaust(getWorldPos3D() - Vec3(0, 0.4f, 0), Vec3(0, -1, 0));
+        if (m_isGrounded) {
+            // Ground walking physics
+            m_vel.x = inputDir.x * walkSpeed;
+            m_vel.z = inputDir.z * walkSpeed;
         } else {
-            m_jetpackActive = false;
-            AudioSystem::instance().setJetpackHum(false);
+            // Extended Gravity Zones: extends up to Y <= 55 blocks
+            float groundGravZone = 55.0f;
+            float ceilingGravZone = (World::CYLINDER_RADIUS * 2.0f - 55.0f); // ~433.9f
 
-            // Simple, intuitive gravity zones:
-            if (m_pos.y <= 32.0f) {
-                // Ground gravity (pulls down to surface)
-                m_vel.y -= 22.0f * dt;
-            } else if (m_pos.y >= (World::CYLINDER_RADIUS * 2.0f - 32.0f)) {
-                // Ceiling gravity (pulls up toward top hull)
-                m_vel.y += 22.0f * dt;
+            if (m_pos.y <= groundGravZone) {
+                // Smooth falloff further from the surface
+                float factor = std::clamp(1.0f - (m_pos.y - 16.0f) / (groundGravZone - 16.0f), 0.3f, 1.0f);
+                m_vel.y -= 24.0f * factor * dt;
+            } else if (m_pos.y >= ceilingGravZone) {
+                // Ceiling gravity
+                m_vel.y += 24.0f * dt;
             } else {
-                // Pure zero-g in mid-air space
-                m_vel.y *= 0.98f;
+                // Pure zero-g mid-air
+                m_vel.y *= 0.985f;
             }
 
             // Air steering & friction
@@ -339,15 +366,15 @@ void Player::updatePhysics(float dt, World& world) {
                 m_vel.x += inputDir.x * (walkSpeed * 0.2f);
                 m_vel.z += inputDir.z * (walkSpeed * 0.2f);
             }
-            m_vel.x *= 0.92f;
-            m_vel.z *= 0.92f;
+            m_vel.x *= 0.94f;
+            m_vel.z *= 0.94f;
         }
     }
 
     // Terminal velocity clamps
-    m_vel.x = std::clamp(m_vel.x, -22.0f, 22.0f);
-    m_vel.y = std::clamp(m_vel.y, -26.0f, 26.0f);
-    m_vel.z = std::clamp(m_vel.z, -22.0f, 22.0f);
+    m_vel.x = std::clamp(m_vel.x, -26.0f, 26.0f);
+    m_vel.y = std::clamp(m_vel.y, -28.0f, 28.0f);
+    m_vel.z = std::clamp(m_vel.z, -26.0f, 26.0f);
 
     checkVoxelCollisions(world);
 }

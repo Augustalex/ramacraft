@@ -37,8 +37,10 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 
 | Key / Action | Function |
 |---|---|
-| `W`, `A`, `S`, `D` / Arrows | Move along Rama's hull & steer jetpack |
-| `SPACE` | Thruster Jetpack (Hold for flight) |
+| `W`, `A`, `S`, `D` / Arrows | Move along Rama's hull & in-flight steering |
+| `SPACE` | Jetpack Thrust **towards look direction** (where looking) |
+| `SHIFT` | Jetpack Thrust **upwards relative to view** (or Sprint on ground) |
+| `CTRL` | Jetpack Thrust **downwards relative to view** |
 | `LEFT CLICK` | Fire Ray Gun / Hold to Mine Block |
 | `RIGHT CLICK` | Place Block or Torch |
 | `1` - `9` / Mouse Wheel | Select Hotbar Slot |
