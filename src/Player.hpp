@@ -22,19 +22,19 @@ public:
     void handleInput(float dt, World& world);
     void update(float dt, World& world);
 
-    // Camera & Transform
+    // Camera & Transform (Voxel Space & 3D Render Space)
     Vec3 getPosition() const { return m_pos; }
     Vec3 getVelocity() const { return m_vel; }
-    Vec3 getEyePosition() const;
+    Vec3 getEyePosition() const { return m_pos + Vec3(0, m_eyeHeight, 0); }
     Vec3 getForward() const;
     Vec3 getRight() const;
-    Vec3 getUp() const { return m_currentUp; }
+    Vec3 getUp() const { return Vec3(0, 1, 0); }
 
-    Vec3 getWorldPos3D() const { return m_pos; }
-    Vec3 getEyePosition3D() const { return getEyePosition(); }
-    Vec3 getForward3D() const { return getForward(); }
-    Vec3 getRight3D() const { return getRight(); }
-    Vec3 getUp3D() const { return m_currentUp; }
+    Vec3 getWorldPos3D() const;
+    Vec3 getEyePosition3D() const;
+    Vec3 getForward3D() const;
+    Vec3 getRight3D() const;
+    Vec3 getUp3D() const;
 
     float getPitch() const { return m_pitch; }
     float getYaw() const { return m_yaw; }

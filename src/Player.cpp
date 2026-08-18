@@ -1,5 +1,6 @@
 #include "Player.hpp"
 #include "World.hpp"
+#include "Chunk.hpp"
 #include "Block.hpp"
 #include "Shader.hpp"
 #include "TextureAtlas.hpp"
@@ -27,29 +28,42 @@ void Player::init(const Vec3& spawnPos) {
     buildViewmodelMesh();
 }
 
-Vec3 Player::getRight() const {
-    Vec3 up = m_currentUp;
-    Vec3 tangent;
-    if (std::abs(up.y) > 0.7f) {
-        tangent = Vec3(1, 0, 0);
-    } else {
-        tangent = Vec3(up.y, -up.x, 0.0f).normalized();
-    }
-    Vec3 longit(0.0f, 0.0f, -1.0f);
+Vec3 Player::getForward() const {
+    float cosP = std::cos(m_pitch * DEG2RAD);
+    float sinP = std::sin(m_pitch * DEG2RAD);
     float cosY = std::cos(m_yaw * DEG2RAD);
     float sinY = std::sin(m_yaw * DEG2RAD);
-    return (tangent * cosY + longit * sinY).normalized();
+    return Vec3(sinY * cosP, -sinP, cosY * cosP).normalized();
 }
 
-Vec3 Player::getForward() const {
-    Vec3 up = m_currentUp;
-    Vec3 tangent;
-    if (std::abs(up.y) > 0.7f) {
-        tangent = Vec3(1, 0, 0);
-    } else {
-        tangent = Vec3(up.y, -up.x, 0.0f).normalized();
-    }
-    Vec3 longit(0.0f, 0.0f, -1.0f);
+Vec3 Player::getRight() const {
+    float cosY = std::cos(m_yaw * DEG2RAD);
+    float sinY = std::sin(m_yaw * DEG2RAD);
+    return Vec3(cosY, 0.0f, -sinY).normalized();
+}
+
+Vec3 Player::getWorldPos3D() const {
+    float theta = m_pos.x * (2.0f * PI / World::CIRCUMFERENCE);
+    float r = World::CYLINDER_RADIUS - m_pos.y;
+    return Vec3(std::sin(theta) * r, World::CYLINDER_RADIUS - std::cos(theta) * r, m_pos.z);
+}
+
+Vec3 Player::getEyePosition3D() const {
+    float theta = m_pos.x * (2.0f * PI / World::CIRCUMFERENCE);
+    float r = World::CYLINDER_RADIUS - (m_pos.y + m_eyeHeight);
+    return Vec3(std::sin(theta) * r, World::CYLINDER_RADIUS - std::cos(theta) * r, m_pos.z);
+}
+
+Vec3 Player::getUp3D() const {
+    float theta = m_pos.x * (2.0f * PI / World::CIRCUMFERENCE);
+    return Vec3(-std::sin(theta), std::cos(theta), 0.0f);
+}
+
+Vec3 Player::getForward3D() const {
+    float theta = m_pos.x * (2.0f * PI / World::CIRCUMFERENCE);
+    Vec3 tangent(std::cos(theta), std::sin(theta), 0.0f);
+    Vec3 up(-std::sin(theta), std::cos(theta), 0.0f);
+    Vec3 longit(0.0f, 0.0f, 1.0f);
 
     float cosP = std::cos(m_pitch * DEG2RAD);
     float sinP = std::sin(m_pitch * DEG2RAD);
@@ -60,8 +74,17 @@ Vec3 Player::getForward() const {
     return fwd.normalized();
 }
 
-Vec3 Player::getEyePosition() const {
-    return m_pos + m_currentUp * m_eyeHeight;
+Vec3 Player::getRight3D() const {
+    Vec3 fwd = getForward3D();
+    Vec3 up = getUp3D();
+    return fwd.cross(up).normalized();
+}
+
+Mat4 Player::getViewMatrix() const {
+    Vec3 eye = getEyePosition3D();
+    Vec3 fwd = getForward3D();
+    Vec3 up = getUp3D();
+    return Mat4::lookAt(eye, eye + fwd, up);
 }
 
 void Player::addRotation(float dPitch, float dYaw) {
@@ -69,13 +92,6 @@ void Player::addRotation(float dPitch, float dYaw) {
     m_yaw += dYaw;
     while (m_yaw > 180.0f) m_yaw -= 360.0f;
     while (m_yaw < -180.0f) m_yaw += 360.0f;
-}
-
-Mat4 Player::getViewMatrix() const {
-    Vec3 eye = getEyePosition();
-    Vec3 fwd = getForward();
-    Vec3 up = getUp();
-    return Mat4::lookAt(eye, eye + fwd, up);
 }
 
 void Player::toggleFlashlight() {
@@ -246,82 +262,44 @@ void Player::update(float dt, World& world) {
 void Player::updatePhysics(float dt, World& world) {
     const Uint8* state = SDL_GetKeyboardState(nullptr);
 
-    float axisY = World::CYLINDER_RADIUS; // 244.46199f
-    float circ = World::CIRCUMFERENCE;    // 1536.0f
-
-    Vec3 delta(m_pos.x, m_pos.y - axisY, 0.0f);
-    float r = std::max(0.1f, std::sqrt(delta.x * delta.x + delta.y * delta.y));
-    Vec3 rOut = delta / r;
-
-    // Calculate height above the nearest terrain surface
-    float theta = std::atan2(m_pos.x, axisY - m_pos.y);
-    if (theta < 0.0f) theta += 2.0f * PI;
-
-    float vx = (theta * circ) / (2.0f * PI);
-    float vz = m_pos.z;
-
-    int ivx = ((int)std::floor(vx) % (int)circ + (int)circ) % (int)circ;
-    int ivz = (int)std::floor(vz);
-
-    int groundY = 0;
-    for (int y = 31; y >= 0; --y) {
-        BlockType b = world.getBlock(ivx, y, ivz);
-        if (BlockRegistry::get(b).isSolid) {
-            groundY = y + 1;
-            break;
-        }
-    }
-    float maxRadius = axisY - (float)groundY;
-    float heightAboveSurface = std::max(0.0f, maxRadius - r);
-
-    // Gravity Zone: gravity only acts within 25 blocks of the ground/ceiling surface!
-    // Above 25m, you are in pristine pure ZERO GRAVITY (0.0g).
-    float gravityZone = 25.0f;
-    bool inGravityZone = (heightAboveSurface < gravityZone);
-
-    if (inGravityZone) {
-        // Surface Up points inward toward the central axis
-        Vec3 targetUp = Vec3(-rOut.x, -rOut.y, 0.0f);
-        m_currentUp = (m_currentUp * 0.92f + targetUp * 0.08f).normalized();
-    }
-    // When in zero-g (h >= 25), m_currentUp DOES NOT ROTATE OR TWIST!
-
-    Vec3 up = m_currentUp;
-    Vec3 fwd = getForward();
-    Vec3 right = getRight();
-
     bool moveFwd = state[SDL_SCANCODE_W] || state[SDL_SCANCODE_UP];
     bool moveBack = state[SDL_SCANCODE_S] || state[SDL_SCANCODE_DOWN];
     bool moveRight = state[SDL_SCANCODE_D] || state[SDL_SCANCODE_RIGHT];
     bool moveLeft = state[SDL_SCANCODE_A] || state[SDL_SCANCODE_LEFT];
+    bool sprint = (state[SDL_SCANCODE_LSHIFT] != 0);
 
-    // Horizontal walk directions relative to surface Up
-    Vec3 walkFwd = (fwd - up * fwd.dot(up)).normalized();
-    Vec3 walkRight = (right - up * right.dot(up)).normalized();
+    float rad = m_yaw * DEG2RAD;
+    float sinY = std::sin(rad);
+    float cosY = std::cos(rad);
 
-    Vec3 walkDir(0, 0, 0);
-    if (moveFwd) walkDir += walkFwd;
-    if (moveBack) walkDir -= walkFwd;
-    if (moveRight) walkDir += walkRight;
-    if (moveLeft) walkDir -= walkRight;
+    // Tangent X and Longitudinal Z vectors in unrolled voxel space
+    Vec3 fwdVec(sinY, 0.0f, cosY);
+    Vec3 rightVec(cosY, 0.0f, -sinY);
 
-    if (walkDir.lengthSq() > 0.001f) {
-        walkDir = walkDir.normalized();
-        m_bobTime += dt * (state[SDL_SCANCODE_LSHIFT] ? 14.0f : 9.5f);
+    Vec3 inputDir(0, 0, 0);
+    if (moveFwd) inputDir += fwdVec;
+    if (moveBack) inputDir -= fwdVec;
+    if (moveRight) inputDir += rightVec;
+    if (moveLeft) inputDir -= rightVec;
+
+    if (inputDir.lengthSq() > 0.001f) {
+        inputDir = inputDir.normalized();
+        m_bobTime += dt * (sprint ? 14.0f : 9.5f);
     } else {
         m_bobTime += dt * 2.0f;
     }
 
-    float speed = (state[SDL_SCANCODE_LSHIFT]) ? 16.0f : 8.0f;
+    float walkSpeed = sprint ? 10.0f : 5.5f;
 
     if (m_isGrounded) {
         // Ground walking physics
-        m_vel = walkDir * speed;
+        m_vel.x = inputDir.x * walkSpeed;
+        m_vel.z = inputDir.z * walkSpeed;
 
         if (state[SDL_SCANCODE_SPACE]) {
-            // Immediate upward leap impulse
-            m_vel += up * 7.5f;
+            m_vel.y = 8.5f; // Jump impulse
             m_isGrounded = false;
+            AudioSystem::instance().playSound(SoundEffect::BlockPlace);
         }
     } else {
         // In-air / Jetpack physics
@@ -329,122 +307,161 @@ void Player::updatePhysics(float dt, World& world) {
             m_jetpackActive = true;
             m_jetpackFuel = 100.0f;
 
-            // 3D Directional Vector Propulsion: (W / UP ARROW rockets forward where looking!)
-            if (moveFwd) {
-                m_vel += fwd * (32.0f * dt);
-            } else if (moveBack) {
-                m_vel -= fwd * (26.0f * dt);
-            }
+            // Jetpack vertical thrust
+            m_vel.y = std::min(m_vel.y + 28.0f * dt, 22.0f);
 
-            if (moveRight) {
-                m_vel += right * (22.0f * dt);
-            } else if (moveLeft) {
-                m_vel -= right * (22.0f * dt);
+            // In-flight directional thrust
+            if (inputDir.lengthSq() > 0.001f) {
+                m_vel.x = inputDir.x * (walkSpeed * 1.4f);
+                m_vel.z = inputDir.z * (walkSpeed * 1.4f);
             }
-
-            // Always add upward lift thrust away from the surface
-            m_vel += up * (22.0f * dt);
 
             AudioSystem::instance().setJetpackHum(true);
-            ProjectileManager::instance().spawnJetpackExhaust(m_pos - up * 0.4f, up * -1.0f);
+            ProjectileManager::instance().spawnJetpackExhaust(getWorldPos3D() - Vec3(0, 0.4f, 0), Vec3(0, -1, 0));
         } else {
             m_jetpackActive = false;
             AudioSystem::instance().setJetpackHum(false);
 
-            if (inGravityZone) {
-                // Surface gravity pulls purely toward the nearest surface hull
-                float normH = heightAboveSurface / gravityZone;
-                float gravityFactor = (1.0f - normH) * (1.0f - normH);
-                float g = 6.0f * gravityFactor;
-                m_vel += rOut * (g * dt);
+            // Simple, intuitive gravity zones:
+            if (m_pos.y <= 32.0f) {
+                // Ground gravity (pulls down to surface)
+                m_vel.y -= 22.0f * dt;
+            } else if (m_pos.y >= (World::CYLINDER_RADIUS * 2.0f - 32.0f)) {
+                // Ceiling gravity (pulls up toward top hull)
+                m_vel.y += 22.0f * dt;
             } else {
-                // In pure zero-g: NO GRAVITY. Pure straight line inertial glide.
-                m_vel *= 0.998f;
+                // Pure zero-g in mid-air space
+                m_vel.y *= 0.98f;
             }
 
-            // Slight in-air steering
-            if (walkDir.lengthSq() > 0.001f) {
-                m_vel += walkDir * (speed * 0.06f);
+            // Air steering & friction
+            if (inputDir.lengthSq() > 0.001f) {
+                m_vel.x += inputDir.x * (walkSpeed * 0.2f);
+                m_vel.z += inputDir.z * (walkSpeed * 0.2f);
             }
-        }
-
-        // Max Speed Clamping: Keeps jetpack fully controlled and prevents runaway velocity
-        float maxSpeed = 24.0f; // 24 m/s (~86 km/h) max controlled flight speed
-        float currentSpeed = m_vel.length();
-        if (currentSpeed > maxSpeed) {
-            m_vel = (m_vel / currentSpeed) * maxSpeed;
+            m_vel.x *= 0.92f;
+            m_vel.z *= 0.92f;
         }
     }
+
+    // Terminal velocity clamps
+    m_vel.x = std::clamp(m_vel.x, -22.0f, 22.0f);
+    m_vel.y = std::clamp(m_vel.y, -26.0f, 26.0f);
+    m_vel.z = std::clamp(m_vel.z, -22.0f, 22.0f);
 
     checkVoxelCollisions(world);
 }
 
 void Player::checkVoxelCollisions(World& world) {
-    // 4-step continuous sub-stepping: completely prevents tunneling/clipping at high speeds
-    int subSteps = 4;
-    float subDt = 0.016f / (float)subSteps;
+    float dt = 0.016f;
+    float halfW = 0.3f;
+    float height = 1.8f;
 
-    float axisY = World::CYLINDER_RADIUS; // 244.46199f
-    float circ = World::CIRCUMFERENCE;    // 1536.0f
-    float spindleRadius = 16.0f;
-
+    // 1. Move along Y (Vertical)
+    m_pos.y += m_vel.y * dt;
     m_isGrounded = false;
 
-    for (int step = 0; step < subSteps; ++step) {
-        m_pos += m_vel * subDt;
+    int minX = (int)std::floor(m_pos.x - halfW);
+    int maxX = (int)std::floor(m_pos.x + halfW);
+    int minY = (int)std::floor(m_pos.y);
+    int maxY = (int)std::floor(m_pos.y + height);
+    int minZ = (int)std::floor(m_pos.z - halfW);
+    int maxZ = (int)std::floor(m_pos.z + halfW);
 
-        Vec3 delta(m_pos.x, m_pos.y - axisY, 0.0f);
-        float r = std::sqrt(delta.x * delta.x + delta.y * delta.y);
-        if (r < 0.1f) r = 0.1f;
-        Vec3 rOut = delta / r;
-
-        // 1. Solid Central Spindle Collision (radius = 16 blocks)
-        if (r <= spindleRadius + 0.9f) {
-            float landRadius = spindleRadius + 0.9f;
-            m_pos.x = rOut.x * landRadius;
-            m_pos.y = axisY + rOut.y * landRadius;
-            m_isGrounded = true;
-
-            float inDot = m_vel.dot(rOut);
-            if (inDot < 0.0f) {
-                m_vel -= rOut * inDot; // Stop moving into spindle
-            }
-            continue;
-        }
-
-        // 2. Convert current 3D position to cylinder voxel space
-        float theta = std::atan2(m_pos.x, axisY - m_pos.y);
-        if (theta < 0.0f) theta += 2.0f * PI;
-
-        float vx = (theta * circ) / (2.0f * PI);
-        float vz = m_pos.z;
-
-        int ivx = ((int)std::floor(vx) % (int)circ + (int)circ) % (int)circ;
-        int ivz = (int)std::floor(vz);
-
-        // Search for solid terrain height at this circumferential column
-        int groundY = 0;
-        for (int y = 63; y >= 0; --y) {
-            BlockType b = world.getBlock(ivx, y, ivz);
-            if (BlockRegistry::get(b).isSolid) {
-                groundY = y + 1;
-                break;
+    for (int y = minY; y <= maxY; ++y) {
+        if (y < 0 || y >= CHUNK_SIZE_Y) continue;
+        for (int x = minX; x <= maxX; ++x) {
+            for (int z = minZ; z <= maxZ; ++z) {
+                BlockType bt = world.getBlock(x, y, z);
+                if (BlockRegistry::get(bt).isSolid) {
+                    if (m_vel.y < 0.0f) {
+                        m_pos.y = (float)(y + 1);
+                        m_vel.y = 0.0f;
+                        m_isGrounded = true;
+                    } else if (m_vel.y > 0.0f) {
+                        m_pos.y = (float)y - height;
+                        m_vel.y = 0.0f;
+                    }
+                }
             }
         }
+    }
 
-        float maxRadius = axisY - (float)groundY;
+    // 2. Move along X (Circumference)
+    m_pos.x += m_vel.x * dt;
+    m_pos.x = std::fmod(m_pos.x + World::CIRCUMFERENCE, World::CIRCUMFERENCE);
 
-        // 3. Ground / Ceiling Hull Landing Check
-        if (r >= maxRadius) {
-            m_pos.x = rOut.x * maxRadius;
-            m_pos.y = axisY + rOut.y * maxRadius;
-            m_isGrounded = true;
+    minX = (int)std::floor(m_pos.x - halfW);
+    maxX = (int)std::floor(m_pos.x + halfW);
+    minY = (int)std::floor(m_pos.y + 0.1f);
+    maxY = (int)std::floor(m_pos.y + height - 0.1f);
+    minZ = (int)std::floor(m_pos.z - halfW);
+    maxZ = (int)std::floor(m_pos.z + halfW);
 
-            float outDot = m_vel.dot(rOut);
-            if (outDot > 0.0f) {
-                m_vel -= rOut * outDot; // Stop moving into hull
+    for (int x = minX; x <= maxX; ++x) {
+        for (int z = minZ; z <= maxZ; ++z) {
+            for (int y = minY; y <= maxY; ++y) {
+                if (y < 0 || y >= CHUNK_SIZE_Y) continue;
+                BlockType bt = world.getBlock(x, y, z);
+                if (BlockRegistry::get(bt).isSolid) {
+                    if (m_vel.x > 0.0f) {
+                        m_pos.x = (float)x - halfW - 0.001f;
+                        m_vel.x = 0.0f;
+                    } else if (m_vel.x < 0.0f) {
+                        m_pos.x = (float)(x + 1) + halfW + 0.001f;
+                        m_vel.x = 0.0f;
+                    }
+                }
             }
         }
+    }
+
+    // 3. Move along Z (Length)
+    m_pos.z += m_vel.z * dt;
+
+    minX = (int)std::floor(m_pos.x - halfW);
+    maxX = (int)std::floor(m_pos.x + halfW);
+    minY = (int)std::floor(m_pos.y + 0.1f);
+    maxY = (int)std::floor(m_pos.y + height - 0.1f);
+    minZ = (int)std::floor(m_pos.z - halfW);
+    maxZ = (int)std::floor(m_pos.z + halfW);
+
+    for (int z = minZ; z <= maxZ; ++z) {
+        for (int x = minX; x <= maxX; ++x) {
+            for (int y = minY; y <= maxY; ++y) {
+                if (y < 0 || y >= CHUNK_SIZE_Y) continue;
+                BlockType bt = world.getBlock(x, y, z);
+                if (BlockRegistry::get(bt).isSolid) {
+                    if (m_vel.z > 0.0f) {
+                        m_pos.z = (float)z - halfW - 0.001f;
+                        m_vel.z = 0.0f;
+                    } else if (m_vel.z < 0.0f) {
+                        m_pos.z = (float)(z + 1) + halfW + 0.001f;
+                        m_vel.z = 0.0f;
+                    }
+                }
+            }
+        }
+    }
+
+    // Central Spindle collision (radius = 16 blocks around Y = R = 244.46)
+    float axisY = World::CYLINDER_RADIUS;
+    float distFromSpindle = std::abs(m_pos.y - axisY);
+    if (distFromSpindle < 16.0f) {
+        if (m_pos.y < axisY) {
+            m_pos.y = axisY - 16.0f;
+            if (m_vel.y > 0.0f) m_vel.y = 0.0f;
+        } else {
+            m_pos.y = axisY + 16.0f;
+            if (m_vel.y < 0.0f) m_vel.y = 0.0f;
+        }
+    }
+
+    // Ground floor bedrock clamp
+    if (m_pos.y < 4.0f) {
+        m_pos.y = 4.0f;
+        m_vel.y = 0.0f;
+        m_isGrounded = true;
     }
 }
 

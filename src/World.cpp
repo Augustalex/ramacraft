@@ -657,29 +657,17 @@ void World::renderRamaSpindleAndSuns(const Shader& shader, const Vec3& playerPos
 }
 
 bool World::raycast(const Ray& ray, float maxDist, Vec3i& outBlock, Vec3i& outNormal, float& outDist) {
-    float step = 0.08f;
+    float step = 0.05f;
     float dist = 0.0f;
     Vec3 prevPos = ray.origin;
-
-    float axisY = CYLINDER_RADIUS; // 122.230996f
-    float circ = CIRCUMFERENCE;    // 768.0f
 
     while (dist < maxDist) {
         dist += step;
         Vec3 curPos = ray.origin + ray.dir * dist;
 
-        // Convert 3D Cartesian position to cylinder voxel coordinates
-        float theta = std::atan2(curPos.x, axisY - curPos.y);
-        if (theta < 0.0f) theta += 2.0f * PI;
-
-        float vx = (theta * circ) / (2.0f * PI);
-        float r = std::sqrt(curPos.x * curPos.x + (curPos.y - axisY) * (curPos.y - axisY));
-        float vy = axisY - r;
-        float vz = curPos.z;
-
-        int ix = ((int)std::floor(vx) % (int)circ + (int)circ) % (int)circ;
-        int iy = (int)std::floor(vy);
-        int iz = (int)std::floor(vz);
+        int ix = floorMod((int)std::floor(curPos.x), (int)CIRCUMFERENCE);
+        int iy = (int)std::floor(curPos.y);
+        int iz = floorDiv((int)std::floor(curPos.z), 1);
 
         if (iy >= 0 && iy < CHUNK_SIZE_Y) {
             BlockType b = getBlock(ix, iy, iz);
@@ -687,24 +675,19 @@ bool World::raycast(const Ray& ray, float maxDist, Vec3i& outBlock, Vec3i& outNo
                 outBlock = Vec3i(ix, iy, iz);
                 outDist = dist;
 
-                float prevTheta = std::atan2(prevPos.x, axisY - prevPos.y);
-                if (prevTheta < 0.0f) prevTheta += 2.0f * PI;
-                float prevVx = (prevTheta * circ) / (2.0f * PI);
-                float prevR = std::sqrt(prevPos.x * prevPos.x + (prevPos.y - axisY) * (prevPos.y - axisY));
-                float prevVy = axisY - prevR;
-                float prevVz = prevPos.z;
+                int px = floorMod((int)std::floor(prevPos.x), (int)CIRCUMFERENCE);
+                int py = (int)std::floor(prevPos.y);
+                int pz = floorDiv((int)std::floor(prevPos.z), 1);
 
-                int dx = ix - (int)std::floor(prevVx);
-                int dy = iy - (int)std::floor(prevVy);
-                int dz = iz - (int)std::floor(prevVz);
+                int dx = px - ix;
+                int dy = py - iy;
+                int dz = pz - iz;
 
-                if (std::abs(dy) >= std::abs(dx) && std::abs(dy) >= std::abs(dz)) {
-                    outNormal = Vec3i(0, (dy > 0 ? -1 : 1), 0);
-                } else if (std::abs(dx) >= std::abs(dz)) {
-                    outNormal = Vec3i((dx > 0 ? -1 : 1), 0, 0);
-                } else {
-                    outNormal = Vec3i(0, 0, (dz > 0 ? -1 : 1));
-                }
+                if (dy != 0) outNormal = Vec3i(0, (dy > 0 ? 1 : -1), 0);
+                else if (dx != 0) outNormal = Vec3i((dx > 0 ? 1 : -1), 0, 0);
+                else if (dz != 0) outNormal = Vec3i(0, 0, (dz > 0 ? 1 : -1));
+                else outNormal = Vec3i(0, 1, 0);
+
                 return true;
             }
         }
