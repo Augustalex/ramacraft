@@ -3,12 +3,7 @@
 #include <cstdint>
 #include <vector>
 
-#ifdef __APPLE__
-#define GL_SILENCE_DEPRECATION
-#include <OpenGL/gl3.h>
-#else
-#include <GL/gl.h>
-#endif
+#include "GLCommon.hpp"
 
 class TextureAtlas {
 public:

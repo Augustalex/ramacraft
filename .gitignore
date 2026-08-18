@@ -1,6 +1,11 @@
 # Build outputs
 bin/
 obj/
+build/
+release-macos/
+release-windows/
+*.zip
+*.tar.gz
 *.o
 *.a
 *.dylib

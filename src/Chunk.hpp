@@ -5,12 +5,7 @@
 #include "Block.hpp"
 #include "Math3D.hpp"
 
-#ifdef __APPLE__
-#define GL_SILENCE_DEPRECATION
-#include <OpenGL/gl3.h>
-#else
-#include <GL/gl.h>
-#endif
+#include "GLCommon.hpp"
 
 constexpr int CHUNK_SIZE_X = 16;
 constexpr int CHUNK_SIZE_Y = 64;
