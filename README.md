@@ -53,15 +53,48 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 
 ---
 
-## Building and Running
+## Download & Installation
 
-### Native macOS Build:
+### Option 1: Download Pre-Compiled Game (Easiest for Windows & macOS)
+1. Go to the [**Releases Page**](https://github.com/Augustalex/ramacraft/releases).
+2. Download **`ramacraft-windows-x64.zip`** (for Windows) or **`ramacraft-macos.tar.gz`** (for Mac).
+3. Extract the ZIP folder.
+4. Double-click **`ramacraft.exe`** on Windows (or `./ramacraft` on Mac) to start playing immediately!
+
+---
+
+## Building from Source
+
+### Windows (Using CMake & Visual Studio / MinGW):
+1. Install [CMake](https://cmake.org/download/) and [SDL2 Development Libraries](https://github.com/libsdl-org/SDL/releases).
+2. Open terminal in the project directory:
+   ```bash
+   cmake -B build
+   cmake --build build --config Release
+   ```
+3. Run `build/Release/ramacraft.exe`.
+
+### macOS (Native):
+1. Install SDL2 via Homebrew:
+   ```bash
+   brew install sdl2
+   ```
+2. Build and run:
+   ```bash
+   make
+   ./bin/ramacraft
+   ```
+
+### WebGL 2 / Browser Build (with Emscripten):
 ```bash
-make
-./bin/ramacraft
+./build_web.sh
+# Open web/index.html via any local web server (e.g. python3 -m http.server 8080)
 ```
 
-### Multiplayer LAN Launch:
+---
+
+## WiFi LAN Multiplayer Launch
+
 - **Host a game directly on port 7777**:
   ```bash
   ./bin/ramacraft --host 7777
@@ -71,9 +104,3 @@ make
   ./bin/ramacraft --join <HOST_IP> 7777
   ```
 - *(Or simply start the game and press `[M]` to host or join discovered LAN games visually!)*
-
-### WebGL 2 / Browser Build (with Emscripten):
-```bash
-./build_web.sh
-# Open web/index.html via any local web server (e.g. python3 -m http.server 8080)
-```

@@ -9,13 +9,24 @@
 #include <iostream>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+typedef int socklen_t;
+typedef int ssize_t;
+#define CLOSE_SOCKET(s) closesocket(s)
+#else
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <algorithm>
+#define CLOSE_SOCKET(s) close(s)
+#endif
 
 NetworkManager& NetworkManager::instance() {
     static NetworkManager s_mgr;
@@ -23,19 +34,34 @@ NetworkManager& NetworkManager::instance() {
 }
 
 static bool setNonBlocking(int fd) {
+#ifdef _WIN32
+    u_long mode = 1;
+    return ioctlsocket(fd, FIONBIO, &mode) == 0;
+#else
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) return false;
     return fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
+#endif
 }
 
 static bool enableBroadcast(int fd) {
+#ifdef _WIN32
+    char opt = 1;
+    return setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) == 0;
+#else
     int opt = 1;
     return setsockopt(fd, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) == 0;
+#endif
 }
 
 static bool enableReuseAddr(int fd) {
+#ifdef _WIN32
+    char opt = 1;
+    return setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
+#else
     int opt = 1;
     return setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == 0;
+#endif
 }
 
 bool NetworkManager::init() {
@@ -81,7 +107,7 @@ bool NetworkManager::startHost(int port, const std::string& serverName) {
 
     if (bind(m_gameSocket, (sockaddr*)&addr, sizeof(addr)) < 0) {
         std::cerr << "Failed to bind host game socket to port " << m_gamePort << std::endl;
-        close(m_gameSocket);
+        CLOSE_SOCKET(m_gameSocket);
         m_gameSocket = -1;
         m_role = NetworkRole::Offline;
         return false;
@@ -162,11 +188,11 @@ void NetworkManager::disconnect() {
     }
 
     if (m_gameSocket >= 0) {
-        close(m_gameSocket);
+        CLOSE_SOCKET(m_gameSocket);
         m_gameSocket = -1;
     }
     if (m_beaconSocket >= 0) {
-        close(m_beaconSocket);
+        CLOSE_SOCKET(m_beaconSocket);
         m_beaconSocket = -1;
     }
 
