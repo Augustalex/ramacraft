@@ -57,11 +57,13 @@ A 3D voxel survival, exploration, and base-building game set inside the colossal
 
 ## Download & Installation
 
-### Option 1: Download Pre-Compiled Game (Easiest for Windows & macOS)
+### Option 1: Download Pre-Compiled Releases (Windows, macOS & Linux)
 1. Go to the [**Releases Page**](https://github.com/Augustalex/ramacraft/releases).
-2. Download **`ramacraft-windows-x64.zip`** (for Windows) or **`ramacraft-macos.tar.gz`** (for Mac).
-3. Extract the ZIP folder.
-4. Double-click **`ramacraft.exe`** on Windows (or `./ramacraft` on Mac) to start playing immediately!
+2. Download the package for your OS:
+   - **Kubuntu / Ubuntu / Debian (`.deb`)**: Download **`ramacraft-ubuntu-debian-amd64.deb`** and double-click to install (or run `sudo apt install ./ramacraft-ubuntu-debian-amd64.deb`). Launch directly from your application menu!
+   - **Linux Standalone / Portable (`.tar.gz`)**: Download **`ramacraft-linux-x64.tar.gz`**, extract, and run `./run.sh` (or `./ramacraft`).
+   - **Windows (`.zip`)**: Download **`ramacraft-windows-x64.zip`**, extract, and double-click **`ramacraft.exe`**.
+   - **macOS (`.tar.gz`)**: Download **`ramacraft-macos.tar.gz`**, extract, and run `./ramacraft`.
 
 ---
 

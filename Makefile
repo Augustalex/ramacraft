@@ -1,6 +1,12 @@
-CXX = clang++
+CXX ?= g++
 CXXFLAGS = -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter $(shell sdl2-config --cflags) -Isrc
-LDFLAGS = $(shell sdl2-config --libs) -framework OpenGL
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+	LDFLAGS = $(shell sdl2-config --libs) -framework OpenGL
+else
+	LDFLAGS = $(shell sdl2-config --libs) -lGL -lpthread -ldl
+endif
 
 SRCS = $(wildcard src/*.cpp)
 OBJS = $(patsubst src/%.cpp, obj/%.o, $(SRCS))

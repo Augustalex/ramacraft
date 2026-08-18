@@ -76,9 +76,78 @@ jobs:
           name: ramacraft-macos
           path: ramacraft-macos.tar.gz
 
+  build-linux:
+    name: Build Linux x64 Executable & Debian Package
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsdl2-dev libgl1-mesa-dev libglu1-mesa-dev
+
+      - name: Build RamaCraft
+        run: |
+          make -j$(nproc)
+
+      - name: Package Linux Standalone & .deb
+        run: |
+          # 1. Package Standalone tar.gz
+          mkdir -p release-linux
+          cp bin/ramacraft release-linux/
+          cp README.md release-linux/
+          cat << 'EOF' > release-linux/run.sh
+          #!/usr/bin/env bash
+          DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          chmod +x "$DIR/ramacraft"
+          exec "$DIR/ramacraft" "$@"
+          EOF
+          chmod +x release-linux/run.sh
+          tar -czvf ramacraft-linux-x64.tar.gz -C release-linux .
+
+          # 2. Package .deb for Ubuntu / Kubuntu / Debian
+          mkdir -p deb-pkg/DEBIAN deb-pkg/usr/local/bin deb-pkg/usr/share/applications
+          cat << 'EOF' > deb-pkg/DEBIAN/control
+          Package: ramacraft
+          Version: 1.2.0
+          Section: games
+          Priority: optional
+          Architecture: amd64
+          Depends: libsdl2-2.0-0, libgl1-mesa-glx | libgl1
+          Maintainer: Augustalex
+          Description: RamaCraft: Voxel Survival in Rama Cylinder
+           Minecraft meets Rendezvous with Rama in an infinite cylindrical voxel survival game.
+          EOF
+          cp bin/ramacraft deb-pkg/usr/local/bin/ramacraft
+          chmod 755 deb-pkg/usr/local/bin/ramacraft
+          
+          # Desktop Entry for Kubuntu / Ubuntu application launcher
+          cat << 'EOF' > deb-pkg/usr/share/applications/ramacraft.desktop
+          [Desktop Entry]
+          Name=RamaCraft
+          Comment=Voxel Survival inside Rendezvous with Rama
+          Exec=/usr/local/bin/ramacraft
+          Icon=applications-games
+          Terminal=false
+          Type=Application
+          Categories=Game;Simulation;
+          EOF
+
+          dpkg-deb --build deb-pkg ramacraft-ubuntu-debian-amd64.deb
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ramacraft-linux
+          path: |
+            ramacraft-linux-x64.tar.gz
+            ramacraft-ubuntu-debian-amd64.deb
+
   release:
     name: Publish GitHub Release
-    needs: [build-windows, build-macos]
+    needs: [build-windows, build-macos, build-linux]
     if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -95,11 +164,18 @@ jobs:
         with:
           name: ramacraft-macos
 
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ramacraft-linux
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ramacraft-windows-x64.zip
             ramacraft-macos.tar.gz
+            ramacraft-linux-x64.tar.gz
+            ramacraft-ubuntu-debian-amd64.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
