@@ -122,6 +122,6 @@ private:
     float m_fireCooldown = 0.0f;
 
     void updatePhysics(float dt, World& world);
-    void checkVoxelCollisions(World& world);
+    void checkVoxelCollisions(float dt, World& world);
     void buildViewmodelMesh();
 };
